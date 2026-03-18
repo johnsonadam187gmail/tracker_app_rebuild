@@ -1,0 +1,230 @@
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    Float,
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Text,
+    Date,
+)
+from sqlalchemy.orm import relationship
+from datetime import datetime
+from app.database import Base
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_uuid = Column(
+        String, unique=True, index=True, default=lambda: f"{datetime.now().timestamp()}"
+    )
+    first_name = Column(String, nullable=False)
+    last_name = Column(String, nullable=False)
+    email = Column(String, unique=True, index=True, nullable=False)
+    password_hash = Column(String)
+    rank = Column(String, default="White")
+    last_graded_date = Column(Date)
+    comments = Column(Text)
+    nicknames = Column(String)
+    profile_image_url = Column(String)
+    is_current = Column(Boolean, default=True)
+    effective_date = Column(DateTime, default=datetime.utcnow)
+    end_date = Column(DateTime)
+    created_date = Column(DateTime, default=datetime.utcnow)
+    updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    roles = relationship("UserRole", back_populates="user")
+    attendance = relationship(
+        "Attendance", back_populates="user", foreign_keys="Attendance.user_uuid"
+    )
+    feedback = relationship(
+        "ClassFeedback", back_populates="user", foreign_keys="ClassFeedback.user_uuid"
+    )
+
+
+class Role(Base):
+    __tablename__ = "roles"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, nullable=False)
+    description = Column(Text)
+
+
+class UserRole(Base):
+    __tablename__ = "user_roles"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_uuid = Column(String, ForeignKey("users.user_uuid"))
+    role_id = Column(Integer, ForeignKey("roles.id"))
+    is_current = Column(Boolean, default=True)
+    effective_date = Column(DateTime, default=datetime.utcnow)
+    end_date = Column(DateTime)
+    created_date = Column(DateTime, default=datetime.utcnow)
+    updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = relationship("User", back_populates="roles")
+    role = relationship("Role")
+
+
+class GymLocation(Base):
+    __tablename__ = "gym_locations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, nullable=False)
+    address = Column(Text)
+
+
+class ClassType(Base):
+    __tablename__ = "class_types"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, nullable=False)
+
+
+class ClassSchedule(Base):
+    __tablename__ = "classes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    class_uuid = Column(String, unique=True, index=True)
+    class_name = Column(String, nullable=False)
+    day = Column(String)
+    time = Column(String)
+    description = Column(Text)
+    points = Column(Float, default=1.0)
+    gym_id = Column(Integer, ForeignKey("gym_locations.id"))
+    class_type_id = Column(Integer, ForeignKey("class_types.id"))
+    is_current = Column(Boolean, default=True)
+    effective_date = Column(DateTime, default=datetime.utcnow)
+    end_date = Column(DateTime)
+    created_date = Column(DateTime, default=datetime.utcnow)
+
+    gym = relationship("GymLocation")
+    class_type = relationship("ClassType")
+    attendance = relationship("Attendance", back_populates="class_schedule")
+    curriculum = relationship(
+        "Curriculum", back_populates="class_schedule", uselist=False
+    )
+
+
+class Term(Base):
+    __tablename__ = "terms"
+
+    id = Column(Integer, primary_key=True, index=True)
+    term_name = Column(String, unique=True, nullable=False)
+    start_date = Column(Date, nullable=False)
+    end_date = Column(Date, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    targets = relationship("TermTarget", back_populates="term")
+
+
+class TermTarget(Base):
+    __tablename__ = "term_targets"
+
+    id = Column(Integer, primary_key=True, index=True)
+    term_id = Column(Integer, ForeignKey("terms.id"))
+    rank = Column(String, nullable=False)
+    target = Column(Float, nullable=False)
+
+    term = relationship("Term", back_populates="targets")
+
+
+class Curriculum(Base):
+    __tablename__ = "curricula"
+
+    id = Column(Integer, primary_key=True, index=True)
+    class_id = Column(Integer, ForeignKey("classes.id"), unique=True)
+    name = Column(String)
+    description = Column(Text)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    class_schedule = relationship("ClassSchedule", back_populates="curriculum")
+    lessons = relationship("Lesson", back_populates="curriculum")
+
+
+class Lesson(Base):
+    __tablename__ = "lessons"
+
+    id = Column(Integer, primary_key=True, index=True)
+    curriculum_id = Column(Integer, ForeignKey("curricula.id"))
+    title = Column(String, nullable=False)
+    description = Column(Text)
+    lesson_plan_url = Column(String)
+    video_folder_url = Column(String)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    curriculum = relationship("Curriculum", back_populates="lessons")
+
+
+class ClassInstance(Base):
+    __tablename__ = "class_instances"
+
+    id = Column(Integer, primary_key=True, index=True)
+    class_id = Column(Integer, ForeignKey("classes.id"))
+    class_date = Column(Date, nullable=False)
+    teacher_uuid = Column(String, ForeignKey("users.user_uuid"))
+    lesson_id = Column(Integer, ForeignKey("lessons.id"))
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    attendance = relationship("Attendance", back_populates="class_instance")
+    feedback = relationship("ClassFeedback", back_populates="class_instance")
+
+
+class Attendance(Base):
+    __tablename__ = "attendance"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_uuid = Column(String, ForeignKey("users.user_uuid"))
+    class_id = Column(Integer, ForeignKey("classes.id"))
+    class_instance_id = Column(Integer, ForeignKey("class_instances.id"))
+    teacher_uuid = Column(String, ForeignKey("users.user_uuid"))
+    user_role_id = Column(Integer, ForeignKey("user_roles.id"))
+    attendance_date = Column(Date, default=datetime.utcnow().date)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    status = Column(String, default="confirmed")
+    confirmed_by = Column(String, ForeignKey("users.user_uuid"))
+    confirmed_at = Column(DateTime)
+
+    user = relationship("User", back_populates="attendance", foreign_keys=[user_uuid])
+    class_schedule = relationship("ClassSchedule", back_populates="attendance")
+    class_instance = relationship("ClassInstance", back_populates="attendance")
+    feedback = relationship(
+        "ClassFeedback",
+        back_populates="attendance",
+        uselist=False,
+        foreign_keys="ClassFeedback.attendance_id",
+    )
+
+
+class ClassFeedback(Base):
+    __tablename__ = "class_feedback"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_uuid = Column(String, ForeignKey("users.user_uuid"))
+    attendance_id = Column(Integer, ForeignKey("attendance.id"))
+    class_instance_id = Column(Integer, ForeignKey("class_instances.id"))
+    rating = Column(String)
+    comment = Column(Text)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = relationship("User", back_populates="feedback", foreign_keys=[user_uuid])
+    attendance = relationship(
+        "Attendance", back_populates="feedback", foreign_keys=[attendance_id]
+    )
+    class_instance = relationship("ClassInstance", back_populates="feedback")
+
+
+class KioskAuth(Base):
+    __tablename__ = "kiosk_auth"
+
+    id = Column(Integer, primary_key=True, index=True)
+    pin_hash = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

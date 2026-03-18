@@ -1,0 +1,17 @@
+from . import (
+    users,
+    classes,
+    class_instances,
+    attendance,
+    terms,
+    gyms,
+    class_types,
+    roles,
+    curricula,
+    lessons,
+    auth,
+    feedback,
+    kiosk,
+    database,
+    dashboard,
+)
