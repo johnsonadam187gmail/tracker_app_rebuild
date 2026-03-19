@@ -1,20 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Avatar } from '@/components/ui/Avatar';
 import { useAuth } from '@/hooks/useAuth';
+import NavBar from '@/components/NavBar';
 import { classesApi, attendanceApi, feedbackApi, usersApi } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import type { ClassSchedule, Attendance, User, ClassFeedback } from '@/types';
 
 export default function TeacherPage() {
-  const { user, isTeacher, isAdmin, isAuthenticated, isLoading } = useAuth();
-  const router = useRouter();
+  const { user, isTeacher, isAdmin, logout, teacherLogin } = useAuth();
   const [activeTab, setActiveTab] = useState<'attendance' | 'roster' | 'feedback'>('attendance');
   const [classes, setClasses] = useState<ClassSchedule[]>([]);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
@@ -23,22 +22,26 @@ export default function TeacherPage() {
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [selectedStudents, setSelectedStudents] = useState<number[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [teachers, setTeachers] = useState<User[]>([]);
+  const [selectedTeacher, setSelectedTeacher] = useState<string>('');
   const [feedback, setFeedback] = useState<ClassFeedback[]>([]);
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
+  const [classesFilter, setClassesFilter] = useState<number[]>([]);
   const [ratingFilter, setRatingFilter] = useState('all');
   const [isProcessing, setIsProcessing] = useState(false);
-
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.push('/login');
-    }
-  }, [isLoading, isAuthenticated, router]);
+  const [isLoaded, setIsLoaded] = useState(true);
+  const [loginForm, setLoginForm] = useState({ email: '', password: '' });
+  const [loginError, setLoginError] = useState('');
 
   useEffect(() => {
     if (isTeacher || isAdmin) {
       loadInitialData();
     }
   }, [isTeacher, isAdmin]);
+
+  useEffect(() => {
+    loadInitialData();
+  }, []);
 
   useEffect(() => {
     if (selectedClass && selectedDate) {
@@ -64,8 +67,27 @@ export default function TeacherPage() {
       if (classesData.length > 0) {
         setSelectedClass(classesData[0].id);
       }
+      const teacherList = usersData.filter(u => u.rank === 'Black' || u.rank === 'Brown');
+      setTeachers(teacherList);
+      if (user) {
+        setSelectedTeacher(user.user_uuid);
+      }
     } catch (error) {
       console.error('Error loading data:', error);
+    } finally {
+      setIsLoaded(true);
+    }
+  };
+
+  const loadFeedback = async () => {
+    if (!user) return;
+    try {
+      const data = await feedbackApi.getByTeacher(user.user_uuid);
+      setFeedback(data);
+    } catch (error) {
+      console.error('Error loading data:', error);
+    } finally {
+      setIsLoaded(true);
     }
   };
 
@@ -117,6 +139,23 @@ export default function TeacherPage() {
     }
   };
 
+  const handleBulkRemove = async () => {
+    if (selectedStudents.length === 0) return;
+    if (!confirm(`Remove ${selectedStudents.length} student(s) from attendance?`)) return;
+    setIsProcessing(true);
+    try {
+      for (const id of selectedStudents) {
+        await attendanceApi.cancel(id);
+      }
+      setSelectedStudents([]);
+      loadAttendance();
+    } catch (error) {
+      console.error('Error bulk removing:', error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const handleConfirmAllPending = async () => {
     const pending = attendance.filter(a => a.status === 'pending').map(a => a.id);
     if (pending.length === 0) return;
@@ -151,33 +190,115 @@ export default function TeacherPage() {
     }
   };
 
-  const loadFeedback = async () => {
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError('');
     try {
-      const data = await feedbackApi.getByTeacher(user!.user_uuid);
-      setFeedback(data);
+      await teacherLogin(loginForm.email, loginForm.password);
     } catch (error) {
-      console.error('Error loading feedback:', error);
+      setLoginError('Invalid email or password');
     }
   };
 
+  // DEBUG: Commenting out conditional returns to find the error
+  /*
   const pendingCount = attendance.filter(a => a.status === 'pending').length;
   const confirmedCount = attendance.filter(a => a.status === 'confirmed').length;
 
-  if (isLoading || !user) {
+  if (!isLoaded) {
     return <div className="p-8 text-center">Loading...</div>;
   }
 
-  if (!isTeacher && !isAdmin) {
+  if (!user || (!isTeacher && !isAdmin)) {
     return (
-      <div className="p-8 text-center">
-        <p>You do not have permission to access this page.</p>
-      </div>
+      <>
+        <NavBar />
+        <main className="max-w-md mx-auto p-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Teacher Login</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleLogin} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                  <Input
+                    type="email"
+                    value={loginForm.email}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLoginForm({ ...loginForm, email: e.target.value })}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
+                  <Input
+                    type="password"
+                    value={loginForm.password}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLoginForm({ ...loginForm, password: e.target.value })}
+                    required
+                  />
+                </div>
+                {loginError && <p className="text-red-500 text-sm">{loginError}</p>}
+                <Button type="submit" className="w-full">Login</Button>
+              </form>
+            </CardContent>
+          </Card>
+        </main>
+      </>
+    );
+  }
+  */
+  const pendingCount = attendance.filter(a => a.status === 'pending').length;
+  const confirmedCount = attendance.filter(a => a.status === 'confirmed').length;
+
+  if (!isLoaded) {
+    return <div className="p-8 text-center">Loading...</div>;
+  }
+
+  if (!user || (!isTeacher && !isAdmin)) {
+    return (
+      <>
+        <NavBar />
+        <main className="max-w-md mx-auto p-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Teacher Login</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleLogin} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                  <Input
+                    type="email"
+                    value={loginForm.email}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLoginForm({ ...loginForm, email: e.target.value })}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
+                  <Input
+                    type="password"
+                    value={loginForm.password}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLoginForm({ ...loginForm, password: e.target.value })}
+                    required
+                  />
+                </div>
+                {loginError && <p className="text-red-500 text-sm">{loginError}</p>}
+                <Button type="submit" className="w-full">Login</Button>
+              </form>
+            </CardContent>
+          </Card>
+        </main>
+      </>
     );
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">Teacher Dashboard</h1>
+    <>
+      <NavBar />
+      <div className="max-w-6xl mx-auto p-6">
+        <h1 className="text-2xl font-bold mb-6">Teacher Dashboard</h1>
 
       <div className="flex gap-2 mb-6">
         <Button
@@ -303,6 +424,9 @@ export default function TeacherPage() {
                 <Button onClick={handleBulkConfirm} disabled={isProcessing}>
                   ✅ Confirm Selected ({selectedStudents.length})
                 </Button>
+                <Button variant="outline" onClick={handleBulkRemove} disabled={isProcessing}>
+                  🗑️ Remove Selected ({selectedStudents.length})
+                </Button>
               </div>
             )}
 
@@ -359,6 +483,28 @@ export default function TeacherPage() {
                   <option key={cls.id} value={cls.id}>{cls.class_name}</option>
                 ))}
               </select>
+              <select
+                className="border rounded-md px-3 py-2"
+                value={selectedTeacher}
+                onChange={(e) => setSelectedTeacher(e.target.value)}
+              >
+                <option value="">Select Teacher...</option>
+                {teachers.map((t) => (
+                  <option key={t.user_uuid} value={t.user_uuid}>
+                    {t.first_name} {t.last_name} ({t.rank})
+                  </option>
+                ))}
+              </select>
+              <Button
+                onClick={() => {
+                  if (selectedTeacher) {
+                    alert(`Teacher assigned for ${classes.find(c => c.id === selectedClass)?.class_name} on ${selectedDate}`);
+                  }
+                }}
+                disabled={!selectedTeacher}
+              >
+                💾 Assign Teacher
+              </Button>
             </div>
 
             <div className="border rounded-lg overflow-hidden">
@@ -396,31 +542,61 @@ export default function TeacherPage() {
             <CardTitle>Feedback</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex gap-4 mb-4">
-              <Input
-                type="date"
-                placeholder="Start Date"
-                value={dateRange.start}
-                onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
-                className="w-auto"
-              />
-              <Input
-                type="date"
-                placeholder="End Date"
-                value={dateRange.end}
-                onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
-                className="w-auto"
-              />
-              <select
-                className="border rounded-md px-3 py-2"
-                value={ratingFilter}
-                onChange={(e) => setRatingFilter(e.target.value)}
-              >
-                <option value="all">All Ratings</option>
-                <option value="positive">Positive</option>
-                <option value="negative">Negative</option>
-              </select>
-            </div>
+            <details className="mb-4">
+              <summary className="cursor-pointer font-medium mb-2">🔽 Filters</summary>
+              <div className="flex gap-4 p-3 bg-slate-50 rounded-lg flex-wrap">
+                <div>
+                  <label className="block text-sm text-slate-500 mb-1">Start Date</label>
+                  <Input
+                    type="date"
+                    value={dateRange.start}
+                    onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
+                    className="w-auto"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-slate-500 mb-1">End Date</label>
+                  <Input
+                    type="date"
+                    value={dateRange.end}
+                    onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
+                    className="w-auto"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-slate-500 mb-1">Rating</label>
+                  <select
+                    className="border rounded-md px-3 py-2"
+                    value={ratingFilter}
+                    onChange={(e) => setRatingFilter(e.target.value)}
+                  >
+                    <option value="all">All Ratings</option>
+                    <option value="positive">Positive</option>
+                    <option value="negative">Negative</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm text-slate-500 mb-1">Classes</label>
+                  <select
+                    className="border rounded-md px-3 py-2 min-w-[150px]"
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === 'all') {
+                        setClassesFilter([]);
+                      } else {
+                        setClassesFilter([Number(val)]);
+                      }
+                    }}
+                    value={classesFilter.length === 0 ? 'all' : classesFilter[0]}
+                  >
+                    <option value="all">All Classes</option>
+                    {classes.map((cls) => (
+                      <option key={cls.id} value={cls.id}>{cls.class_name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </details>
 
             <div className="grid grid-cols-3 gap-4 mb-4">
               <div className="text-center p-3 bg-slate-50 rounded-lg">
@@ -441,22 +617,46 @@ export default function TeacherPage() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              {feedback.map((fb) => (
-                <div key={fb.id} className="border rounded-lg p-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span>{fb.rating === 'thumbs_up' ? '👍' : '👎'}</span>
-                      <span className="text-sm text-slate-500">{formatDate(fb.created_at)}</span>
-                    </div>
-                  </div>
-                  {fb.comment && <p className="mt-2 text-sm">{fb.comment}</p>}
-                </div>
-              ))}
+            <div className="border rounded-lg overflow-hidden">
+              <table className="w-full">
+                <thead className="bg-slate-50">
+                  <tr>
+                    <th className="text-left p-3">Date</th>
+                    <th className="text-left p-3">Class</th>
+                    <th className="text-left p-3">Lesson</th>
+                    <th className="text-left p-3">Rating</th>
+                    <th className="text-left p-3">Comment</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {feedback
+                    .filter(f => {
+                      if (ratingFilter === 'positive' && f.rating !== 'thumbs_up') return false;
+                      if (ratingFilter === 'negative' && f.rating !== 'thumbs_down') return false;
+                      if (dateRange.start && f.created_at < dateRange.start) return false;
+                      if (dateRange.end && f.created_at > dateRange.end + 'T23:59:59') return false;
+                      return true;
+                    })
+                    .map((fb) => (
+                      <tr key={fb.id} className="border-t">
+                        <td className="p-3 text-sm">{formatDate(fb.created_at)}</td>
+                        <td className="p-3 text-sm">Class #{fb.class_instance_id || '-'}</td>
+                        <td className="p-3 text-sm">-</td>
+                        <td className="p-3">
+                          <span className={fb.rating === 'thumbs_up' ? 'text-green-600' : 'text-red-600'}>
+                            {fb.rating === 'thumbs_up' ? '👍' : '👎'}
+                          </span>
+                        </td>
+                        <td className="p-3 text-sm">{fb.comment || '-'}</td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
             </div>
           </CardContent>
         </Card>
       )}
     </div>
+    </>
   );
 }

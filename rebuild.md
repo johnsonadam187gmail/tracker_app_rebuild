@@ -1246,3 +1246,26 @@ Follow the priority order:
 4. Implement proper security and testing
 
 The result will be a fully functional martial arts attendance tracking system with feature parity to the original Streamlit application, but with modern, secure, and scalable architecture.
+
+---
+
+## KNOWN ISSUES
+
+### User Search Returns 422 Error (March 19, 2026)
+
+**Error:** `Request failed with status code 422` in `src/lib/api.ts:76`
+
+**Description:** User search on the home/check-in page returns a 422 error, preventing students from finding themselves to check in.
+
+**Root Cause:** The `/users/search` endpoint is returning a validation error.
+
+**Resolution Steps:**
+1. Verify backend is running at localhost:8000
+2. Test endpoint directly: `curl "http://localhost:8000/users/search?q=john"`
+3. Check if endpoint requires authentication header
+4. Verify query parameter format matches backend expectation
+5. Add proper error handling in frontend
+
+---
+
+**Last Updated:** March 19, 2026
