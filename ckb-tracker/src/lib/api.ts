@@ -73,7 +73,7 @@ export const usersApi = {
     return response.data;
   },
   search: async (query: string) => {
-    const response = await api.get<User[]>(`/users/search?q=${query}`);
+    const response = await api.get<User[]>(`/users/search?query=${query}`);
     return response.data;
   },
   uploadPhoto: async (uuid: string, file: File) => {

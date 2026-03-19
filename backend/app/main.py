@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from app.database import engine
 from app import models
 from app.routers import (
@@ -20,6 +21,15 @@ from app.routers import (
 )
 
 app = FastAPI(title="CKB Tracker API", version="1.0.0")
+
+# CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://localhost:3001"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Create tables
 models.Base.metadata.create_all(bind=engine)

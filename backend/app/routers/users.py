@@ -61,6 +61,20 @@ def list_users(db: Session = Depends(get_db)):
     return db.query(models.User).filter(models.User.is_current == True).all()
 
 
+@router.get("/search", response_model=List[schemas.UserResponse])
+def search_users(query: str, db: Session = Depends(get_db)):
+    return (
+        db.query(models.User)
+        .filter(
+            models.User.is_current == True,
+            (models.User.first_name.ilike(f"%{query}%"))
+            | (models.User.last_name.ilike(f"%{query}%"))
+            | (models.User.email.ilike(f"%{query}%")),
+        )
+        .all()
+    )
+
+
 @router.get("/{user_uuid}", response_model=schemas.UserResponse)
 def get_user(user_uuid: str, db: Session = Depends(get_db)):
     user = (
@@ -105,20 +119,6 @@ def update_user(
     db.commit()
     db.refresh(new_user)
     return new_user
-
-
-@router.get("/search", response_model=List[schemas.UserResponse])
-def search_users(q: str, db: Session = Depends(get_db)):
-    return (
-        db.query(models.User)
-        .filter(
-            models.User.is_current == True,
-            (models.User.first_name.ilike(f"%{q}%"))
-            | (models.User.last_name.ilike(f"%{q}%"))
-            | (models.User.email.ilike(f"%{q}%")),
-        )
-        .all()
-    )
 
 
 @router.post("/{user_uuid}/photo")
