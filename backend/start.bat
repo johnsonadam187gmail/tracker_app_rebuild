@@ -1,0 +1,6 @@
+@echo off
+cd /d "%~dp0"
+echo Installing dependencies...
+C:\Users\johns\AppData\Local\Programs\Python\Python314\python.exe -m pip install uvicorn fastapi sqlalchemy bcrypt python-multipart pydantic --quiet
+echo Starting backend on port 8000...
+C:\Users\johns\AppData\Local\Programs\Python\Python314\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
