@@ -20,3 +20,14 @@ Thumbs.db
 dist/
 build/
 *.egg-info/
+
+# Python virtual environments
+Include/
+Lib/
+Scripts/
+
+# Databases
+*.db
+
+# Windows artifacts
+nul
