@@ -7,7 +7,6 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Avatar } from '@/components/ui/Avatar';
 import { useAuth } from '@/hooks/useAuth';
-import NavBar from '@/components/NavBar';
 import { classesApi, attendanceApi, feedbackApi, usersApi } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import type { ClassSchedule, Attendance, User, ClassFeedback } from '@/types';
@@ -212,8 +211,8 @@ export default function TeacherPage() {
   if (!user || (!isTeacher && !isAdmin)) {
     return (
       <>
-        <NavBar />
-        <main className="max-w-md mx-auto p-6">
+        
+        <div className="max-w-md mx-auto pt-20">
           <Card>
             <CardHeader>
               <CardTitle>Teacher Login</CardTitle>
@@ -243,7 +242,7 @@ export default function TeacherPage() {
               </form>
             </CardContent>
           </Card>
-        </main>
+        </div>
       </>
     );
   }
@@ -258,8 +257,8 @@ export default function TeacherPage() {
   if (!user || (!isTeacher && !isAdmin)) {
     return (
       <>
-        <NavBar />
-        <main className="max-w-md mx-auto p-6">
+        
+        <div className="max-w-md mx-auto pt-20">
           <Card>
             <CardHeader>
               <CardTitle>Teacher Login</CardTitle>
@@ -289,32 +288,32 @@ export default function TeacherPage() {
               </form>
             </CardContent>
           </Card>
-        </main>
+        </div>
       </>
     );
   }
 
   return (
     <>
-      <NavBar />
-      <div className="max-w-6xl mx-auto p-6">
-        <h1 className="text-2xl font-bold mb-6">Teacher Dashboard</h1>
+      
+      <div className="max-w-6xl mx-auto">
+        <h1 className="text-2xl font-bold mb-6 text-slate-900 dark:text-white">Teacher Dashboard</h1>
 
       <div className="flex gap-2 mb-6">
         <Button
-          variant={activeTab === 'attendance' ? 'default' : 'outline'}
+          variant={activeTab === 'attendance' ? 'primary' : 'outline'}
           onClick={() => setActiveTab('attendance')}
         >
           ✅ Confirm Attendance
         </Button>
         <Button
-          variant={activeTab === 'roster' ? 'default' : 'outline'}
+          variant={activeTab === 'roster' ? 'primary' : 'outline'}
           onClick={() => setActiveTab('roster')}
         >
           📋 Class Roster
         </Button>
         <Button
-          variant={activeTab === 'feedback' ? 'default' : 'outline'}
+          variant={activeTab === 'feedback' ? 'primary' : 'outline'}
           onClick={() => { setActiveTab('feedback'); loadFeedback(); }}
         >
           💬 Feedback
@@ -358,17 +357,17 @@ export default function TeacherPage() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-3 gap-4 mb-6">
-              <div className="text-center p-4 bg-slate-50 rounded-lg">
-                <p className="text-2xl font-bold">{attendance.length}</p>
-                <p className="text-slate-500">Total Students</p>
+              <div className="text-center p-4 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                <p className="text-2xl font-bold text-slate-900 dark:text-white">{attendance.length}</p>
+                <p className="text-slate-500 dark:text-slate-400">Total Students</p>
               </div>
-              <div className="text-center p-4 bg-yellow-50 rounded-lg">
-                <p className="text-2xl font-bold text-yellow-600">{pendingCount}</p>
-                <p className="text-yellow-600">⏳ Pending</p>
+              <div className="text-center p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+                <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{pendingCount}</p>
+                <p className="text-yellow-600 dark:text-yellow-400">⏳ Pending</p>
               </div>
-              <div className="text-center p-4 bg-green-50 rounded-lg">
-                <p className="text-2xl font-bold text-green-600">{confirmedCount}</p>
-                <p className="text-green-600">✅ Confirmed</p>
+              <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                <p className="text-2xl font-bold text-green-600 dark:text-green-400">{confirmedCount}</p>
+                <p className="text-green-600 dark:text-green-400">✅ Confirmed</p>
               </div>
             </div>
 
@@ -376,7 +375,7 @@ export default function TeacherPage() {
               {attendance.map((att) => (
                 <div
                   key={att.id}
-                  className="flex items-center justify-between p-3 bg-slate-50 rounded-lg"
+                  className="flex items-center justify-between p-3 bg-slate-100 dark:bg-slate-800 rounded-lg"
                 >
                   <div className="flex items-center gap-3">
                     {att.status === 'pending' && (
@@ -392,16 +391,16 @@ export default function TeacherPage() {
                       lastName={att.user?.last_name}
                     />
                     <div>
-                      <p className="font-medium">
+                      <p className="font-medium text-slate-900 dark:text-white">
                         {att.user?.first_name} {att.user?.last_name}
                       </p>
-                      <p className="text-sm text-slate-500">
+                      <p className="text-sm text-slate-500 dark:text-slate-400">
                         Checked in: {new Date(att.created_at).toLocaleTimeString()}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className={att.status === 'confirmed' ? 'text-green-600' : 'text-yellow-600'}>
+                    <span className={att.status === 'confirmed' ? 'text-green-600 dark:text-green-400' : 'text-yellow-600 dark:text-yellow-400'}>
                       {att.status === 'confirmed' ? '✅ Confirmed' : '⏳ Pending'}
                     </span>
                     {att.status === 'pending' && (
@@ -507,23 +506,23 @@ export default function TeacherPage() {
               </Button>
             </div>
 
-            <div className="border rounded-lg overflow-hidden">
+            <div className="border dark:border-slate-700 rounded-lg overflow-hidden">
               <table className="w-full">
-                <thead className="bg-slate-50">
+                <thead className="bg-slate-100 dark:bg-slate-800">
                   <tr>
-                    <th className="text-left p-3">Name</th>
-                    <th className="text-left p-3">Rank</th>
-                    <th className="text-left p-3">Check-in Time</th>
+                    <th className="text-left p-3 text-slate-700 dark:text-slate-300">Name</th>
+                    <th className="text-left p-3 text-slate-700 dark:text-slate-300">Rank</th>
+                    <th className="text-left p-3 text-slate-700 dark:text-slate-300">Check-in Time</th>
                   </tr>
                 </thead>
                 <tbody>
                   {attendance.map((att) => (
-                    <tr key={att.id} className="border-t">
-                      <td className="p-3">
+                    <tr key={att.id} className="border-t dark:border-slate-700">
+                      <td className="p-3 text-slate-900 dark:text-white">
                         {att.user?.first_name} {att.user?.last_name}
                       </td>
-                      <td className="p-3">{att.user?.rank || '-'}</td>
-                      <td className="p-3">
+                      <td className="p-3 text-slate-700 dark:text-slate-300">{att.user?.rank || '-'}</td>
+                      <td className="p-3 text-slate-700 dark:text-slate-300">
                         {new Date(att.created_at).toLocaleTimeString()}
                       </td>
                     </tr>
@@ -531,7 +530,7 @@ export default function TeacherPage() {
                 </tbody>
               </table>
             </div>
-            <p className="mt-2 text-slate-500">Total Attendees: {attendance.length}</p>
+            <p className="mt-2 text-slate-500 dark:text-slate-400">Total Attendees: {attendance.length}</p>
           </CardContent>
         </Card>
       )}
@@ -543,10 +542,10 @@ export default function TeacherPage() {
           </CardHeader>
           <CardContent>
             <details className="mb-4">
-              <summary className="cursor-pointer font-medium mb-2">🔽 Filters</summary>
-              <div className="flex gap-4 p-3 bg-slate-50 rounded-lg flex-wrap">
+              <summary className="cursor-pointer font-medium mb-2 text-slate-700 dark:text-slate-300">🔽 Filters</summary>
+              <div className="flex gap-4 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg flex-wrap">
                 <div>
-                  <label className="block text-sm text-slate-500 mb-1">Start Date</label>
+                  <label className="block text-sm text-slate-500 dark:text-slate-400 mb-1">Start Date</label>
                   <Input
                     type="date"
                     value={dateRange.start}
@@ -555,7 +554,7 @@ export default function TeacherPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-slate-500 mb-1">End Date</label>
+                  <label className="block text-sm text-slate-500 dark:text-slate-400 mb-1">End Date</label>
                   <Input
                     type="date"
                     value={dateRange.end}
@@ -564,9 +563,9 @@ export default function TeacherPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-slate-500 mb-1">Rating</label>
+                  <label className="block text-sm text-slate-500 dark:text-slate-400 mb-1">Rating</label>
                   <select
-                    className="border rounded-md px-3 py-2"
+                    className="border dark:border-slate-600 dark:bg-slate-800 dark:text-white rounded-md px-3 py-2"
                     value={ratingFilter}
                     onChange={(e) => setRatingFilter(e.target.value)}
                   >
@@ -576,9 +575,9 @@ export default function TeacherPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm text-slate-500 mb-1">Classes</label>
+                  <label className="block text-sm text-slate-500 dark:text-slate-400 mb-1">Classes</label>
                   <select
-                    className="border rounded-md px-3 py-2 min-w-[150px]"
+                    className="border dark:border-slate-600 dark:bg-slate-800 dark:text-white rounded-md px-3 py-2 min-w-[150px]"
                     onChange={(e) => {
                       const val = e.target.value;
                       if (val === 'all') {
@@ -599,33 +598,33 @@ export default function TeacherPage() {
             </details>
 
             <div className="grid grid-cols-3 gap-4 mb-4">
-              <div className="text-center p-3 bg-slate-50 rounded-lg">
-                <p className="text-xl font-bold">{feedback.length}</p>
-                <p className="text-sm text-slate-500">Total Feedback</p>
+              <div className="text-center p-3 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                <p className="text-xl font-bold text-slate-900 dark:text-white">{feedback.length}</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">Total Feedback</p>
               </div>
-              <div className="text-center p-3 bg-green-50 rounded-lg">
-                <p className="text-xl font-bold text-green-600">
+              <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                <p className="text-xl font-bold text-green-600 dark:text-green-400">
                   {feedback.filter(f => f.rating === 'thumbs_up').length}
                 </p>
-                <p className="text-sm text-green-600">👍 Positive</p>
+                <p className="text-sm text-green-600 dark:text-green-400">👍 Positive</p>
               </div>
-              <div className="text-center p-3 bg-red-50 rounded-lg">
-                <p className="text-xl font-bold text-red-600">
+              <div className="text-center p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                <p className="text-xl font-bold text-red-600 dark:text-red-400">
                   {feedback.filter(f => f.rating === 'thumbs_down').length}
                 </p>
-                <p className="text-sm text-red-600">👎 Negative</p>
+                <p className="text-sm text-red-600 dark:text-red-400">👎 Negative</p>
               </div>
             </div>
 
-            <div className="border rounded-lg overflow-hidden">
+            <div className="border dark:border-slate-700 rounded-lg overflow-hidden">
               <table className="w-full">
-                <thead className="bg-slate-50">
+                <thead className="bg-slate-100 dark:bg-slate-800">
                   <tr>
-                    <th className="text-left p-3">Date</th>
-                    <th className="text-left p-3">Class</th>
-                    <th className="text-left p-3">Lesson</th>
-                    <th className="text-left p-3">Rating</th>
-                    <th className="text-left p-3">Comment</th>
+                    <th className="text-left p-3 text-slate-700 dark:text-slate-300">Date</th>
+                    <th className="text-left p-3 text-slate-700 dark:text-slate-300">Class</th>
+                    <th className="text-left p-3 text-slate-700 dark:text-slate-300">Lesson</th>
+                    <th className="text-left p-3 text-slate-700 dark:text-slate-300">Rating</th>
+                    <th className="text-left p-3 text-slate-700 dark:text-slate-300">Comment</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -638,16 +637,16 @@ export default function TeacherPage() {
                       return true;
                     })
                     .map((fb) => (
-                      <tr key={fb.id} className="border-t">
-                        <td className="p-3 text-sm">{formatDate(fb.created_at)}</td>
-                        <td className="p-3 text-sm">Class #{fb.class_instance_id || '-'}</td>
-                        <td className="p-3 text-sm">-</td>
+                      <tr key={fb.id} className="border-t dark:border-slate-700">
+                        <td className="p-3 text-sm text-slate-700 dark:text-slate-300">{formatDate(fb.created_at)}</td>
+                        <td className="p-3 text-sm text-slate-700 dark:text-slate-300">Class #{fb.class_instance_id || '-'}</td>
+                        <td className="p-3 text-sm text-slate-700 dark:text-slate-300">-</td>
                         <td className="p-3">
-                          <span className={fb.rating === 'thumbs_up' ? 'text-green-600' : 'text-red-600'}>
+                          <span className={fb.rating === 'thumbs_up' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
                             {fb.rating === 'thumbs_up' ? '👍' : '👎'}
                           </span>
                         </td>
-                        <td className="p-3 text-sm">{fb.comment || '-'}</td>
+                        <td className="p-3 text-sm text-slate-700 dark:text-slate-300">{fb.comment || '-'}</td>
                       </tr>
                     ))}
                 </tbody>

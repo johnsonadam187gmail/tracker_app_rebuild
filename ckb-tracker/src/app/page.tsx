@@ -1,9 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import { useRouter } from 'next/navigation';
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
@@ -11,12 +10,23 @@ import { RankBadge } from '@/components/ui/Badge';
 import { usersApi, classesApi, attendanceApi } from '@/lib/api';
 import { cn, formatDate, debounce } from '@/lib/utils';
 import type { User, ClassSchedule, Attendance } from '@/types';
-import { Camera, Upload, Trash2, Sun, Moon, Check, UserPlus, Plus } from 'lucide-react';
+import { 
+  Camera, 
+  Upload, 
+  Trash2, 
+  CheckCircle2, 
+  Clock,
+  UserPlus,
+  Plus,
+  Search,
+  X,
+  ChevronRight,
+  AlertCircle,
+  Check
+} from 'lucide-react';
 
 export default function AttendancePage() {
-  const pathname = usePathname();
   const router = useRouter();
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -118,7 +128,6 @@ export default function AttendancePage() {
       setTodayAttendance(attendance.filter(a => a.attendance_date === today));
     } catch (error) {
       console.error('Check-in error:', error);
-      alert('Failed to check in. You may already be checked in for this class.');
     } finally {
       setIsLoading(false);
     }
@@ -139,7 +148,7 @@ export default function AttendancePage() {
   };
 
   const handleStartOver = () => {
-    if (confirm('Are you sure you want to start over?')) {
+    if (confirm('Start over with a new student?')) {
       stopCamera();
       setSelectedUser(null);
       setSessionTimeLeft(120);
@@ -289,311 +298,325 @@ export default function AttendancePage() {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  const navItems = [
-    { href: '/', label: 'Check In', icon: Check },
-    { href: '/portal', label: 'Student Portal', icon: UserPlus },
-    { href: '/teacher', label: 'Teacher', icon: UserPlus },
-    { href: '/admin', label: 'Admin', icon: UserPlus },
-  ];
-
   return (
-    <div className={cn('min-h-screen bg-slate-50 dark:bg-slate-950', theme === 'dark' && 'dark')}>
-      {/* Top Navigation Bar */}
-      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-1">
-              <h1 className="text-xl font-bold text-slate-900 dark:text-white mr-8">CKB Tracker</h1>
-              <nav className="flex gap-1">
-                {navItems.map((item) => (
-                  <Link key={item.href} href={item.href}>
-                    <div className={cn(
-                      "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-                      pathname === item.href 
-                        ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" 
-                        : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-                    )}>
-                      <item.icon className="w-4 h-4" />
-                      <span>{item.label}</span>
-                    </div>
-                  </Link>
-                ))}
-              </nav>
+    <div className="max-w-3xl mx-auto space-y-6">
+      {showCompleteConfirm && (
+        <Card className="border-2 border-emerald-500/50 bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-900/20 dark:to-slate-900">
+          <CardContent className="py-8 text-center">
+            <div className="w-16 h-16 mx-auto mb-4 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center ring-4 ring-emerald-500/20">
+              <CheckCircle2 className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-            >
-              {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
-            </Button>
-          </div>
-        </div>
-      </header>
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
+              Complete Check-In Session?
+            </h2>
+            <p className="text-slate-600 dark:text-slate-400 mb-6">
+              You have checked into {todayAttendance.length} class{todayAttendance.length !== 1 ? 'es' : ''} today.
+            </p>
+            <div className="flex gap-3 justify-center">
+              <Button variant="outline" onClick={() => setShowCompleteConfirm(false)}>
+                Go Back
+              </Button>
+              <Button variant="success" onClick={confirmComplete}>
+                <Check className="w-4 h-4 mr-2" />
+                Complete Session
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-      {/* Main Content */}
-      <main className="max-w-4xl mx-auto p-6">
-        {/* New Member Form (collapsible) */}
-        {showNewMemberForm && (
-          <Card className="mb-6">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Add New Member</CardTitle>
-                <Button variant="ghost" size="sm" onClick={() => setShowNewMemberForm(false)}>
-                  ✕
-                </Button>
+      {!selectedUser ? (
+        <div className="space-y-6 animate-in">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center mb-6">
+                <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">
+                  Welcome to Check-In
+                </h1>
+                <p className="text-slate-500 dark:text-slate-400 flex items-center justify-center gap-2">
+                  <Clock className="w-4 h-4" />
+                  {formatDate(new Date())}
+                </p>
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                <Input
-                  label="First Name"
-                  value={newMember.first_name}
-                  onChange={(e) => setNewMember({ ...newMember, first_name: e.target.value })}
-                />
-                <Input
-                  label="Last Name"
-                  value={newMember.last_name}
-                  onChange={(e) => setNewMember({ ...newMember, last_name: e.target.value })}
-                />
-                <Input
-                  label="Email"
-                  type="email"
-                  value={newMember.email}
-                  onChange={(e) => setNewMember({ ...newMember, email: e.target.value })}
-                />
-                <Input
-                  label="Password"
-                  type="password"
-                  value={newMember.password}
-                  onChange={(e) => setNewMember({ ...newMember, password: e.target.value })}
-                />
-                <Input
-                  label="Confirm Password"
-                  type="password"
-                  value={newMember.confirm_password}
-                  onChange={(e) => setNewMember({ ...newMember, confirm_password: e.target.value })}
-                />
-                <Input
-                  label="Nicknames (optional)"
-                  value={newMember.nicknames}
-                  onChange={(e) => setNewMember({ ...newMember, nicknames: e.target.value })}
-                />
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Rank</label>
-                  <select
-                    className="flex h-10 w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2"
-                    value={newMember.rank}
-                    onChange={(e) => setNewMember({ ...newMember, rank: e.target.value })}
-                  >
-                    <option value="White">White</option>
-                    <option value="Blue">Blue</option>
-                    <option value="Purple">Purple</option>
-                    <option value="Brown">Brown</option>
-                    <option value="Black">Black</option>
-                  </select>
+
+              <div className="relative">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                  <Search className="w-5 h-5" />
                 </div>
                 <Input
-                  label="Comments (optional)"
-                  value={newMember.comments}
-                  onChange={(e) => setNewMember({ ...newMember, comments: e.target.value })}
+                  placeholder="Search your name..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-12 h-12 text-base"
                 />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                )}
               </div>
-              <Button className="mt-4 w-full" onClick={handleCreateMember} disabled={isLoading}>
-                {isLoading ? 'Creating...' : 'Create Member'}
-              </Button>
+
+              {searchResults.length > 0 && (
+                <div className="mt-4 space-y-2">
+                  {searchResults.map((user) => (
+                    <button
+                      key={user.user_uuid}
+                      onClick={() => handleSelectUser(user)}
+                      className={cn(
+                        "w-full flex items-center gap-4 p-4 rounded-xl text-left",
+                        "bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/50 dark:hover:bg-slate-800",
+                        "transition-all duration-200 group"
+                      )}
+                    >
+                      <Avatar
+                        src={user.profile_image_url}
+                        firstName={user.first_name}
+                        lastName={user.last_name}
+                        size="lg"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-slate-900 dark:text-white">
+                          {user.first_name} {user.last_name}
+                        </p>
+                        {user.nicknames && (
+                          <p className="text-sm text-slate-500 dark:text-slate-400">{user.nicknames}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <RankBadge rank={user.rank} />
+                        <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-slate-600 group-hover:translate-x-1 transition-all" />
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {searchQuery.length >= 2 && searchResults.length === 0 && (
+                <div className="mt-4 text-center py-8">
+                  <div className="w-12 h-12 mx-auto mb-3 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center">
+                    <AlertCircle className="w-6 h-6 text-slate-400" />
+                  </div>
+                  <p className="text-slate-500 dark:text-slate-400">No results found</p>
+                  <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
+                    Try a different name or add yourself as a new member
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
-        )}
 
-        {!selectedUser ? (
-          <div className="space-y-4">
-            <Card>
+          <Button
+            variant="outline"
+            className="w-full h-12 text-base"
+            onClick={() => setShowNewMemberForm(!showNewMemberForm)}
+          >
+            <UserPlus className="w-5 h-5 mr-2" />
+            {showNewMemberForm ? 'Cancel' : 'Add New Member'}
+          </Button>
+
+          {showNewMemberForm && (
+            <Card className="animate-in">
               <CardHeader>
-                <CardTitle>Welcome to CKB Tracker</CardTitle>
-                <p className="text-slate-600 dark:text-slate-400">{formatDate(new Date())}</p>
+                <CardTitle>New Member Registration</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="mb-6">
+                <div className="grid grid-cols-2 gap-4">
                   <Input
-                    placeholder="Search for yourself... (minimum 2 characters)"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="text-lg"
+                    label="First Name"
+                    value={newMember.first_name}
+                    onChange={(e) => setNewMember({ ...newMember, first_name: e.target.value })}
                   />
-                </div>
-
-                {searchResults.length > 0 && (
-                  <div className="space-y-2">
-                    {searchResults.map((user) => (
-                      <div
-                        key={user.user_uuid}
-                        className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer"
-                        onClick={() => handleSelectUser(user)}
-                      >
-                        <div className="flex items-center gap-3">
-                          <Avatar
-                            src={user.profile_image_url}
-                            firstName={user.first_name}
-                            lastName={user.last_name}
-                            size="lg"
-                          />
-                          <div>
-                            <p className="font-medium text-slate-900 dark:text-white">
-                              {user.first_name} {user.last_name}
-                              {user.nicknames && ` (${user.nicknames})`}
-                            </p>
-                            <p className="text-sm text-slate-500">{user.email}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <RankBadge rank={user.rank} />
-                          <Button size="sm">Select</Button>
-                        </div>
-                      </div>
-                    ))}
+                  <Input
+                    label="Last Name"
+                    value={newMember.last_name}
+                    onChange={(e) => setNewMember({ ...newMember, last_name: e.target.value })}
+                  />
+                  <Input
+                    label="Email"
+                    type="email"
+                    value={newMember.email}
+                    onChange={(e) => setNewMember({ ...newMember, email: e.target.value })}
+                  />
+                  <Input
+                    label="Password"
+                    type="password"
+                    value={newMember.password}
+                    onChange={(e) => setNewMember({ ...newMember, password: e.target.value })}
+                  />
+                  <Input
+                    label="Confirm Password"
+                    type="password"
+                    value={newMember.confirm_password}
+                    onChange={(e) => setNewMember({ ...newMember, confirm_password: e.target.value })}
+                  />
+                  <Input
+                    label="Nicknames (optional)"
+                    value={newMember.nicknames}
+                    onChange={(e) => setNewMember({ ...newMember, nicknames: e.target.value })}
+                  />
+                  <div className="col-span-2">
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                      Rank
+                    </label>
+                    <select
+                      className="flex h-11 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:text-white"
+                      value={newMember.rank}
+                      onChange={(e) => setNewMember({ ...newMember, rank: e.target.value })}
+                    >
+                      <option value="White">White</option>
+                      <option value="Blue">Blue</option>
+                      <option value="Purple">Purple</option>
+                      <option value="Brown">Brown</option>
+                      <option value="Black">Black</option>
+                    </select>
                   </div>
-                )}
+                  <div className="col-span-2">
+                    <Input
+                      label="Comments (optional)"
+                      value={newMember.comments}
+                      onChange={(e) => setNewMember({ ...newMember, comments: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <Button 
+                  className="w-full mt-6" 
+                  onClick={handleCreateMember} 
+                  disabled={isLoading}
+                  isLoading={isLoading}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Member
+                </Button>
               </CardContent>
             </Card>
-
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => setShowNewMemberForm(!showNewMemberForm)}
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Add New Member
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {/* Complete Confirmation */}
-            {showCompleteConfirm && (
-              <Card className="border-2 border-green-500 bg-green-50 dark:bg-green-900/20">
-                <CardContent className="py-6 text-center">
-                  <div className="w-16 h-16 mx-auto mb-4 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center">
-                    <Check className="w-8 h-8 text-green-600 dark:text-green-400" />
+          )}
+        </div>
+      ) : (
+        <div className="space-y-6 animate-in">
+          <Card className="overflow-hidden">
+            <div className="h-2 bg-gradient-to-r from-blue-500 to-blue-600" />
+            <CardContent className="pt-6">
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="relative">
+                    <Avatar
+                      src={selectedUser.profile_image_url}
+                      firstName={selectedUser.first_name}
+                      lastName={selectedUser.last_name}
+                      size="xl"
+                      className="ring-4 ring-slate-100 dark:ring-slate-800"
+                    />
+                    <button
+                      onClick={() => setShowPhotoUpload(!showPhotoUpload)}
+                      className="absolute -bottom-1 -right-1 w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center hover:bg-blue-600 transition-colors shadow-lg"
+                    >
+                      <Camera className="w-4 h-4" />
+                    </button>
                   </div>
-                  <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
-                    Complete Session?
-                  </h2>
-                  <p className="text-slate-600 dark:text-slate-400 mb-4">
-                    You have checked into {todayAttendance.length} class(es) today.
-                  </p>
-                  <div className="flex gap-3 justify-center">
-                    <Button variant="outline" onClick={() => setShowCompleteConfirm(false)}>
-                      Go Back
-                    </Button>
-                    <Button onClick={confirmComplete}>
-                      Complete - Done
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Student Info Header */}
-            <Card>
-              <CardContent className="py-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="relative">
-                      <Avatar
-                        src={selectedUser.profile_image_url}
-                        firstName={selectedUser.first_name}
-                        lastName={selectedUser.last_name}
-                        size="xl"
-                      />
-                      <button
-                        onClick={() => setShowPhotoUpload(!showPhotoUpload)}
-                        className="absolute -bottom-1 -right-1 w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center hover:bg-blue-600"
-                      >
-                        <Camera className="w-4 h-4" />
-                      </button>
-                    </div>
-                    <div>
-                      <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-                        {selectedUser.first_name} {selectedUser.last_name}
-                        {selectedUser.nicknames && ` (${selectedUser.nicknames})`}
-                      </h2>
-                      <p className="text-slate-500">{selectedUser.email}</p>
+                  <div>
+                    <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+                      {selectedUser.first_name} {selectedUser.last_name}
+                    </h2>
+                    {selectedUser.nicknames && (
+                      <p className="text-slate-500 dark:text-slate-400">"{selectedUser.nicknames}"</p>
+                    )}
+                    <div className="flex items-center gap-2 mt-2">
                       <RankBadge rank={selectedUser.rank} />
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm text-slate-500 dark:text-slate-400">Session Time</p>
-                    <p className={cn('text-3xl font-bold', sessionTimeLeft < 30 && 'text-red-500')}>
+                </div>
+                <div className="text-right">
+                  <div className={cn(
+                    "px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800",
+                    sessionTimeLeft < 30 && "bg-red-100 dark:bg-red-900/20 animate-pulse"
+                  )}>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">Session Time</p>
+                    <p className={cn(
+                      "text-2xl font-bold tabular-nums",
+                      sessionTimeLeft < 30 ? "text-red-600 dark:text-red-400" : "text-slate-900 dark:text-white"
+                    )}>
                       {formatTimeLeft()}
                     </p>
                   </div>
                 </div>
+              </div>
 
-                {/* Photo Upload Panel */}
-                {showPhotoUpload && (
-                  <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                    <div className="flex gap-2 mb-3">
-                      <Button
-                        variant={photoMethod === 'upload' ? 'default' : 'outline'}
-                        size="sm"
-                        className="flex-1"
-                        onClick={() => { setPhotoMethod('upload'); stopCamera(); }}
-                      >
-                        <Upload className="w-4 h-4 mr-1" /> Upload
-                      </Button>
-                      <Button
-                        variant={photoMethod === 'camera' ? 'default' : 'outline'}
-                        size="sm"
-                        className="flex-1"
-                        onClick={() => { setPhotoMethod('camera'); startCamera(); }}
-                      >
-                        <Camera className="w-4 h-4 mr-1" /> Camera
-                      </Button>
-                    </div>
-
-                    {photoMethod === 'upload' ? (
-                      <input
-                        type="file"
-                        accept="image/*"
-                        ref={fileInputRef}
-                        onChange={handleFileUpload}
-                        className="hidden"
-                      />
-                    ) : cameraStream ? (
-                      <div className="space-y-2">
-                        <video ref={videoRef} autoPlay playsInline muted className="w-full max-w-sm mx-auto rounded" />
-                        <div className="flex gap-2 justify-center">
-                          <Button size="sm" onClick={capturePhoto} disabled={isUploadingPhoto}>Capture</Button>
-                          <Button variant="outline" size="sm" onClick={stopCamera}>Cancel</Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <p className="text-sm text-slate-500 text-center">Click Camera to start</p>
-                    )}
-
-                    <div className="flex gap-2 mt-3 justify-center">
-                      {photoMethod === 'upload' && (
-                        <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={isUploadingPhoto}>
-                          Choose Photo
-                        </Button>
-                      )}
-                      {selectedUser.profile_image_url && (
-                        <Button variant="ghost" size="sm" onClick={handleDeletePhoto} className="text-red-500">
-                          <Trash2 className="w-4 h-4 mr-1" /> Delete
-                        </Button>
-                      )}
-                    </div>
+              {showPhotoUpload && (
+                <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                  <div className="flex gap-2 mb-3">
+                    <Button
+                      variant={photoMethod === 'upload' ? 'primary' : 'outline'}
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => { setPhotoMethod('upload'); stopCamera(); }}
+                    >
+                      <Upload className="w-4 h-4 mr-1" /> Upload
+                    </Button>
+                    <Button
+                      variant={photoMethod === 'camera' ? 'primary' : 'outline'}
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => { setPhotoMethod('camera'); startCamera(); }}
+                    >
+                      <Camera className="w-4 h-4 mr-1" /> Camera
+                    </Button>
                   </div>
-                )}
-              </CardContent>
-            </Card>
 
-            {/* Classes */}
-            <Card>
-              <CardHeader>
+                  {photoMethod === 'upload' ? (
+                    <input
+                      type="file"
+                      accept="image/*"
+                      ref={fileInputRef}
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                  ) : cameraStream ? (
+                    <div className="space-y-2">
+                      <video ref={videoRef} autoPlay playsInline muted className="w-full max-w-sm mx-auto rounded-lg" />
+                      <div className="flex gap-2 justify-center">
+                        <Button size="sm" onClick={capturePhoto} disabled={isUploadingPhoto}>
+                          Capture
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={stopCamera}>
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-slate-500 text-center py-2">Click Camera to start</p>
+                  )}
+
+                  <div className="flex gap-2 mt-3 justify-center">
+                    {photoMethod === 'upload' && (
+                      <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={isUploadingPhoto}>
+                        Choose Photo
+                      </Button>
+                    )}
+                    {selectedUser.profile_image_url && (
+                      <Button variant="ghost" size="sm" onClick={handleDeletePhoto} className="text-red-500 hover:text-red-600">
+                        <Trash2 className="w-4 h-4 mr-1" /> Delete
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
                 <CardTitle>Today&apos;s Classes</CardTitle>
-              </CardHeader>
-              <CardContent>
+                <span className="text-sm text-slate-500 dark:text-slate-400">
+                  {todayAttendance.length} / {classes.length} checked in
+                </span>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {classes.length > 0 ? (
                 <div className="space-y-3">
                   {classes.map((cls) => {
                     const { status, attendance } = getAttendanceStatus(cls.id);
@@ -601,57 +624,80 @@ export default function AttendancePage() {
                     return (
                       <div
                         key={cls.id}
-                        className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800 rounded-lg"
+                        className={cn(
+                          "flex items-center justify-between p-4 rounded-xl border transition-all",
+                          status === 'confirmed' 
+                            ? "bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800"
+                            : status === 'pending'
+                            ? "bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800"
+                            : "bg-white border-slate-200 dark:bg-slate-800/50 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
+                        )}
                       >
                         <div>
-                          <p className="font-medium text-slate-900 dark:text-white">{cls.class_name}</p>
-                          <p className="text-sm text-slate-500">
-                            {cls.day} {cls.time} • {cls.points} pts
+                          <p className="font-semibold text-slate-900 dark:text-white">{cls.class_name}</p>
+                          <p className="text-sm text-slate-500 dark:text-slate-400">
+                            {cls.day} {cls.time} &bull; {cls.points} pts
                           </p>
                         </div>
                         <div>
                           {status === 'not_checked_in' && (
-                            <Button onClick={() => handleCheckIn(cls.id)} disabled={isLoading}>
-                              ✅ Check In
+                            <Button 
+                              onClick={() => handleCheckIn(cls.id)} 
+                              disabled={isLoading}
+                              isLoading={isLoading}
+                            >
+                              Check In
                             </Button>
                           )}
                           {status === 'pending' && (
                             <div className="flex items-center gap-2">
-                              <span className="text-yellow-600">⏳ Pending</span>
-                              <Button variant="outline" size="sm" onClick={() => handleCancelCheckIn(attendance!.id)}>
-                                🗑️ Cancel
+                              <span className="px-3 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-full text-sm font-medium">
+                                Pending
+                              </span>
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => handleCancelCheckIn(attendance!.id)}
+                                className="text-red-500 hover:text-red-600"
+                              >
+                                <Trash2 className="w-4 h-4" />
                               </Button>
                             </div>
                           )}
                           {status === 'confirmed' && (
-                            <span className="text-green-600 font-medium">✅ Confirmed</span>
+                            <span className="px-3 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-full text-sm font-medium flex items-center gap-1">
+                              <CheckCircle2 className="w-4 h-4" />
+                              Confirmed
+                            </span>
                           )}
                         </div>
                       </div>
                     );
                   })}
                 </div>
-
-                {classes.length === 0 && (
-                  <p className="text-center text-slate-500 py-8">No classes scheduled</p>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Actions */}
-            <div className="flex gap-4">
-              {hasCheckedIn && (
-                <Button className="flex-1" onClick={handleComplete}>
-                  ✅ Complete - Done
-                </Button>
+              ) : (
+                <div className="text-center py-8">
+                  <div className="w-12 h-12 mx-auto mb-3 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center">
+                    <AlertCircle className="w-6 h-6 text-slate-400" />
+                  </div>
+                  <p className="text-slate-500 dark:text-slate-400">No classes scheduled</p>
+                </div>
               )}
-              <Button className={hasCheckedIn ? 'flex-1' : 'w-full'} variant="outline" onClick={handleStartOver}>
-                🔄 Start Over - New Student
-              </Button>
-            </div>
-          </div>
-        )}
-      </main>
+            </CardContent>
+            {hasCheckedIn && (
+              <CardFooter className="flex gap-3">
+                <Button className="flex-1" onClick={handleComplete}>
+                  <CheckCircle2 className="w-4 h-4 mr-2" />
+                  Complete Session
+                </Button>
+                <Button variant="outline" onClick={handleStartOver}>
+                  Start Over
+                </Button>
+              </CardFooter>
+            )}
+          </Card>
+        </div>
+      )}
 
       <canvas ref={canvasRef} className="hidden" />
     </div>

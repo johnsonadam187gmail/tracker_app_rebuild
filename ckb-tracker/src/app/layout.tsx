@@ -2,12 +2,22 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/hooks/useAuth";
+import { ThemeProvider } from "@/hooks/useTheme";
+import { Sidebar } from "@/components/layout/Sidebar";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
   title: "CKB Tracker",
-  description: "Martial Arts Attendance Tracking",
+  description: "Martial Arts Attendance Tracking System",
+  icons: {
+    icon: [
+      {
+        url: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%232563eb' rx='20' width='100' height='100'/><text x='50' y='70' font-size='60' text-anchor='middle' fill='white' font-family='Arial' font-weight='bold'>C</text></svg>",
+        type: "image/svg+xml",
+      },
+    ],
+  },
 };
 
 export default function RootLayout({
@@ -16,13 +26,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${inter.className} antialiased bg-slate-50`}>
-        <AuthProvider>
-          <main className="flex-1 p-6">
-            {children}
-          </main>
-        </AuthProvider>
+    <html lang="en" className={inter.variable}>
+      <body className="min-h-screen bg-[var(--background)] text-[var(--foreground)] antialiased">
+        <ThemeProvider>
+          <AuthProvider>
+            <Sidebar />
+            <main className="lg:ml-[280px] min-h-screen transition-all duration-300">
+              <div className="p-6 lg:p-8 pt-16 lg:pt-8">
+                {children}
+              </div>
+            </main>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

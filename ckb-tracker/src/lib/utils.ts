@@ -51,12 +51,12 @@ export const RANK_ORDER = ['White', 'Blue', 'Purple', 'Brown', 'Black'];
 
 export function getRankColor(rank?: string): string {
   switch (rank) {
-    case 'White': return 'bg-gray-100 text-gray-800';
-    case 'Blue': return 'bg-blue-100 text-blue-800';
-    case 'Purple': return 'bg-purple-100 text-purple-800';
-    case 'Brown': return 'bg-amber-100 text-amber-800';
-    case 'Black': return 'bg-gray-800 text-white';
-    default: return 'bg-gray-100 text-gray-800';
+    case 'White': return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
+    case 'Blue': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300';
+    case 'Purple': return 'bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300';
+    case 'Brown': return 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300';
+    case 'Black': return 'bg-gray-800 text-white dark:bg-gray-900 dark:text-gray-100';
+    default: return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
   }
 }
 

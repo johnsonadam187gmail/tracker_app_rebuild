@@ -9,7 +9,7 @@ import { Select } from '@/components/ui/Select';
 import { Avatar } from '@/components/ui/Avatar';
 import { RankBadge } from '@/components/ui/Badge';
 import { useAuth } from '@/hooks/useAuth';
-import NavBar from '@/components/NavBar';
+import { useChartColors } from '@/hooks/useChartColors';
 import {
   usersApi,
   classesApi,
@@ -32,6 +32,7 @@ import type { User, ClassSchedule, Role, Term, TermTarget, Curriculum, Lesson, G
 export default function AdminPage() {
   const { user, isAdmin, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
+  const { colors } = useChartColors();
   const [activeTab, setActiveTab] = useState('users');
   const [isLogin, setIsLogin] = useState(true);
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
@@ -558,24 +559,23 @@ export default function AdminPage() {
   );
 
   const tabs = [
-    { id: 'users', label: '🥋 User Admin' },
-    { id: 'classes', label: '📅 Class Schedule' },
-    { id: 'gyms', label: '🏢 Gyms & Types' },
-    { id: 'terms', label: '🗓️ Terms' },
-    { id: 'targets', label: '🎯 Targets' },
-    { id: 'lessons', label: '📚 Lessons' },
-    { id: 'student-passwords', label: '🔐 Student Passwords' },
-    { id: 'analytics', label: '📈 Performance Analytics' },
-    { id: 'feedback', label: '📊 Feedback Analytics' },
-    { id: 'kiosk', label: '📱 Kiosk' },
-    { id: 'database', label: '🗄️ Database' },
+    { id: 'users', label: 'User Admin' },
+    { id: 'classes', label: 'Class Schedule' },
+    { id: 'gyms', label: 'Gyms & Types' },
+    { id: 'terms', label: 'Terms' },
+    { id: 'targets', label: 'Targets' },
+    { id: 'lessons', label: 'Lessons' },
+    { id: 'student-passwords', label: 'Student Passwords' },
+    { id: 'analytics', label: 'Performance Analytics' },
+    { id: 'feedback', label: 'Feedback Analytics' },
+    { id: 'kiosk', label: 'Kiosk' },
+    { id: 'database', label: 'Database' },
   ];
 
   if (isLogin) {
     return (
       <>
-        <NavBar />
-        <div className="max-w-md mx-auto mt-20">
+        <div className="max-w-md mx-auto pt-20">
           <Card>
             <CardHeader>
               <CardTitle>Admin Login</CardTitle>
@@ -604,15 +604,14 @@ export default function AdminPage() {
 
   return (
     <>
-      <NavBar />
-      <div className="max-w-7xl mx-auto p-6">
-        <h1 className="text-2xl font-bold mb-6">Admin Settings</h1>
+      <div className="max-w-7xl mx-auto">
+        <h1 className="text-2xl font-bold mb-6 text-slate-900 dark:text-white">Admin Settings</h1>
 
       <div className="flex gap-2 mb-6 flex-wrap">
         {tabs.map((tab) => (
           <Button
             key={tab.id}
-            variant={activeTab === tab.id ? 'default' : 'outline'}
+            variant={activeTab === tab.id ? 'primary' : 'outline'}
             onClick={() => setActiveTab(tab.id)}
           >
             {tab.label}
@@ -636,19 +635,19 @@ export default function AdminPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-slate-500 mb-4">Total Active Members: {studentStats.totalStudents}</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Total Active Members: {studentStats.totalStudents}</p>
                 <div className="space-y-2">
                   {filteredUsers.map((u) => (
                     <div
                       key={u.user_uuid}
-                      className={`flex items-center justify-between p-3 rounded-lg cursor-pointer ${selectedUser?.user_uuid === u.user_uuid ? 'bg-blue-50 border-blue-200' : 'bg-slate-50 hover:bg-slate-100'}`}
+                      className={`flex items-center justify-between p-3 rounded-lg cursor-pointer ${selectedUser?.user_uuid === u.user_uuid ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800' : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
                       onClick={() => handleSelectUser(u)}
                     >
                       <div className="flex items-center gap-3">
                         <Avatar src={u.profile_image_url} firstName={u.first_name} lastName={u.last_name} />
                         <div>
-                          <p className="font-medium">{u.first_name} {u.last_name}</p>
-                          <p className="text-sm text-slate-500">{u.email}</p>
+                          <p className="font-medium text-slate-900 dark:text-white">{u.first_name} {u.last_name}</p>
+                          <p className="text-sm text-slate-500 dark:text-slate-400">{u.email}</p>
                         </div>
                       </div>
                       <RankBadge rank={u.rank} />
@@ -679,7 +678,7 @@ export default function AdminPage() {
                         size="sm"
                         onClick={handleDeletePhoto}
                         disabled={isProcessing}
-                        className="text-red-500 mt-2"
+                        className="text-red-500 dark:text-red-400 mt-2"
                       >
                         Delete Photo
                       </Button>
@@ -721,10 +720,10 @@ export default function AdminPage() {
                     onChange={(e) => setUserForm({ ...userForm, last_graded_date: e.target.value })}
                   />
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Roles</label>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Roles</label>
                     <div className="space-y-1">
                       {roles.map((role) => (
-                        <label key={role.id} className="flex items-center gap-2">
+                        <label key={role.id} className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
                           <input
                             type="checkbox"
                             checked={selectedRoles.includes(role.id)}
@@ -750,8 +749,8 @@ export default function AdminPage() {
                     Save Changes & Archive History
                   </Button>
 
-                  <div className="border-t pt-4 mt-4">
-                    <h4 className="font-medium mb-2">Reset Password</h4>
+                  <div className="border-t dark:border-slate-700 pt-4 mt-4">
+                    <h4 className="font-medium mb-2 text-slate-900 dark:text-white">Reset Password</h4>
                     <Input
                       label="New Password"
                       type="password"
@@ -775,11 +774,11 @@ export default function AdminPage() {
                     </Button>
                   </div>
 
-                  <div className="border-t pt-4">
-                    <h4 className="font-medium mb-2">Photo Management</h4>
+                  <div className="border-t dark:border-slate-700 pt-4">
+                    <h4 className="font-medium mb-2 text-slate-900 dark:text-white">Photo Management</h4>
                     <div className="flex gap-2 mb-2">
                       <Button
-                        variant={photoMethod === 'upload' ? 'default' : 'outline'}
+                        variant={photoMethod === 'upload' ? 'primary' : 'outline'}
                         size="sm"
                         className="flex-1"
                         onClick={() => {
@@ -790,7 +789,7 @@ export default function AdminPage() {
                         Upload
                       </Button>
                       <Button
-                        variant={photoMethod === 'camera' ? 'default' : 'outline'}
+                        variant={photoMethod === 'camera' ? 'primary' : 'outline'}
                         size="sm"
                         className="flex-1"
                         onClick={() => {
@@ -894,12 +893,12 @@ export default function AdminPage() {
             <CardContent>
               <div className="space-y-2">
                 {classes.map((cls) => (
-                  <div key={cls.id} className="flex justify-between p-3 bg-slate-50 rounded-lg">
+                  <div key={cls.id} className="flex justify-between p-3 bg-slate-100 dark:bg-slate-800 rounded-lg">
                     <div>
-                      <p className="font-medium">{cls.class_name}</p>
-                      <p className="text-sm text-slate-500">{cls.day} {cls.time}</p>
+                      <p className="font-medium text-slate-900 dark:text-white">{cls.class_name}</p>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">{cls.day} {cls.time}</p>
                     </div>
-                    <p className="font-medium">{cls.points} pts</p>
+                    <p className="font-medium text-slate-900 dark:text-white">{cls.points} pts</p>
                   </div>
                 ))}
               </div>
@@ -930,9 +929,9 @@ export default function AdminPage() {
               </Button>
               <div className="space-y-2 mt-4">
                 {gymLocations.map((gym) => (
-                  <div key={gym.id} className="p-3 bg-slate-50 rounded-lg">
-                    <p className="font-medium">{gym.name}</p>
-                    {gym.address && <p className="text-sm text-slate-500">{gym.address}</p>}
+                  <div key={gym.id} className="p-3 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                    <p className="font-medium text-slate-900 dark:text-white">{gym.name}</p>
+                    {gym.address && <p className="text-sm text-slate-500 dark:text-slate-400">{gym.address}</p>}
                   </div>
                 ))}
               </div>
@@ -954,7 +953,7 @@ export default function AdminPage() {
               </Button>
               <div className="space-y-2 mt-4">
                 {classTypes.map((type) => (
-                  <div key={type.id} className="p-3 bg-slate-50 rounded-lg">
+                  <div key={type.id} className="p-3 bg-slate-100 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-white">
                     {type.name}
                   </div>
                 ))}
@@ -1001,9 +1000,9 @@ export default function AdminPage() {
             <CardContent>
               <div className="space-y-2">
                 {terms.map((term) => (
-                  <div key={term.id} className="p-3 bg-slate-50 rounded-lg">
-                    <p className="font-medium">{term.term_name}</p>
-                    <p className="text-sm text-slate-500">
+                  <div key={term.id} className="p-3 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                    <p className="font-medium text-slate-900 dark:text-white">{term.term_name}</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
                       {formatDate(term.start_date)} - {formatDate(term.end_date)}
                     </p>
                   </div>
@@ -1054,9 +1053,9 @@ export default function AdminPage() {
                 {targets.map((target) => {
                   const term = terms.find(t => t.id === target.term_id);
                   return (
-                    <div key={target.id} className="p-3 bg-slate-50 rounded-lg">
-                      <p className="font-medium">{term?.term_name}</p>
-                      <p className="text-sm text-slate-500">{target.rank}: {target.target} hours</p>
+                    <div key={target.id} className="p-3 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                      <p className="font-medium text-slate-900 dark:text-white">{term?.term_name}</p>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">{target.rank}: {target.target} hours</p>
                     </div>
                   );
                 })}
@@ -1070,28 +1069,28 @@ export default function AdminPage() {
         <div className="space-y-4">
           <div className="flex gap-2 mb-4">
             <Button
-              variant={lessonSubTab === 'curricula' ? 'default' : 'outline'}
+              variant={lessonSubTab === 'curricula' ? 'primary' : 'outline'}
               size="sm"
               onClick={() => setLessonSubTab('curricula')}
             >
               📖 Curricula
             </Button>
             <Button
-              variant={lessonSubTab === 'lessons' ? 'default' : 'outline'}
+              variant={lessonSubTab === 'lessons' ? 'primary' : 'outline'}
               size="sm"
               onClick={() => setLessonSubTab('lessons')}
             >
               📝 Lesson Library
             </Button>
             <Button
-              variant={lessonSubTab === 'assign' ? 'default' : 'outline'}
+              variant={lessonSubTab === 'assign' ? 'primary' : 'outline'}
               size="sm"
               onClick={() => setLessonSubTab('assign')}
             >
               📅 Assign to Dates
             </Button>
             <Button
-              variant={lessonSubTab === 'teachers' ? 'default' : 'outline'}
+              variant={lessonSubTab === 'teachers' ? 'primary' : 'outline'}
               size="sm"
               onClick={() => setLessonSubTab('teachers')}
             >
@@ -1328,7 +1327,7 @@ export default function AdminPage() {
 
               {selectedStudentAnalytics && performanceStats ? (
                 <div className="space-y-6">
-                  <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-lg">
+                  <div className="flex items-center gap-4 p-4 bg-slate-100 dark:bg-slate-800 rounded-lg">
                     <Avatar
                       src={selectedStudentAnalytics.profile_image_url}
                       firstName={selectedStudentAnalytics.first_name}
@@ -1336,44 +1335,44 @@ export default function AdminPage() {
                       size="lg"
                     />
                     <div>
-                      <h3 className="text-xl font-bold">{selectedStudentAnalytics.first_name} {selectedStudentAnalytics.last_name}</h3>
+                      <h3 className="text-xl font-bold text-slate-900 dark:text-white">{selectedStudentAnalytics.first_name} {selectedStudentAnalytics.last_name}</h3>
                       <RankBadge rank={selectedStudentAnalytics.rank} />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-4 gap-4">
-                    <div className="text-center p-4 bg-slate-50 rounded-lg">
-                      <p className="text-2xl font-bold">{performanceStats.stats?.totalPoints || 0}</p>
-                      <p className="text-sm text-slate-500">Total Points</p>
+                    <div className="text-center p-4 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                      <p className="text-2xl font-bold text-slate-900 dark:text-white">{performanceStats.stats?.totalPoints || 0}</p>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">Total Points</p>
                     </div>
-                    <div className="text-center p-4 bg-slate-50 rounded-lg">
-                      <p className="text-2xl font-bold">{performanceStats.stats?.totalClasses || 0}</p>
-                      <p className="text-sm text-slate-500">Total Sessions</p>
+                    <div className="text-center p-4 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                      <p className="text-2xl font-bold text-slate-900 dark:text-white">{performanceStats.stats?.totalClasses || 0}</p>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">Total Sessions</p>
                     </div>
-                    <div className="text-center p-4 bg-slate-50 rounded-lg">
-                      <p className="text-2xl font-bold">{performanceStats.stats?.classesThisMonth || 0}</p>
-                      <p className="text-sm text-slate-500">This Month</p>
+                    <div className="text-center p-4 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                      <p className="text-2xl font-bold text-slate-900 dark:text-white">{performanceStats.stats?.classesThisMonth || 0}</p>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">This Month</p>
                     </div>
-                    <div className="text-center p-4 bg-slate-50 rounded-lg">
-                      <p className="text-2xl font-bold">{performanceStats.stats?.lastClassDaysAgo ?? 'N/A'}</p>
-                      <p className="text-sm text-slate-500">Days Since Last</p>
+                    <div className="text-center p-4 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                      <p className="text-2xl font-bold text-slate-900 dark:text-white">{performanceStats.stats?.lastClassDaysAgo ?? 'N/A'}</p>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">Days Since Last</p>
                     </div>
                   </div>
 
                   {performanceStats.trend && performanceStats.trend.length > 0 && (
-                    <div className="p-4 bg-slate-50 rounded-lg">
-                      <h4 className="font-medium mb-4">Attendance Trend (Last 90 Days)</h4>
+                    <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                      <h4 className="font-medium mb-4 text-slate-900 dark:text-white">Attendance Trend (Last 90 Days)</h4>
                       <div className="space-y-2">
                         {performanceStats.trend.slice(0, 14).map((day: any) => (
                           <div key={day.date} className="flex items-center gap-4">
-                            <span className="text-sm text-slate-500 w-24">{day.date}</span>
-                            <div className="flex-1 bg-slate-200 rounded-full h-4">
+                            <span className="text-sm text-slate-500 dark:text-slate-400 w-24">{day.date}</span>
+                            <div className="flex-1 bg-slate-200 dark:bg-slate-700 rounded-full h-4">
                               <div
                                 className="bg-blue-500 h-4 rounded-full"
                                 style={{ width: `${Math.min((day.points / 10) * 100, 100)}%` }}
                               />
                             </div>
-                            <span className="text-sm w-16 text-right">{day.points} pts</span>
+                            <span className="text-sm w-16 text-right text-slate-700 dark:text-slate-300">{day.points} pts</span>
                           </div>
                         ))}
                       </div>
@@ -1381,10 +1380,11 @@ export default function AdminPage() {
                   )}
                 </div>
               ) : (
-                <p className="text-slate-500">Select a student to view their analytics...</p>
+                <p className="text-slate-500 dark:text-slate-400">Select a student to view their analytics...</p>
               )}
             </CardContent>
           </Card>
+        </Card>
         </div>
       )}
 
@@ -1395,8 +1395,8 @@ export default function AdminPage() {
           </CardHeader>
           <CardContent>
             <details className="mb-4">
-              <summary className="cursor-pointer font-medium mb-2">🔽 Filters</summary>
-              <div className="flex gap-4 p-3 bg-slate-50 rounded-lg flex-wrap">
+              <summary className="cursor-pointer font-medium mb-2 text-slate-700 dark:text-slate-300">🔽 Filters</summary>
+              <div className="flex gap-4 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg flex-wrap">
                 <Input
                   type="date"
                   label="Start Date"
@@ -1412,9 +1412,9 @@ export default function AdminPage() {
                   className="w-auto"
                 />
                 <div>
-                  <label className="block text-sm font-medium mb-1">Rating</label>
+                  <label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Rating</label>
                   <select
-                    className="border rounded-md px-3 py-2"
+                    className="border dark:border-slate-600 dark:bg-slate-800 dark:text-white rounded-md px-3 py-2"
                     value={feedbackFilters.rating}
                     onChange={(e) => setFeedbackFilters({ ...feedbackFilters, rating: e.target.value })}
                   >
@@ -1429,26 +1429,26 @@ export default function AdminPage() {
             {feedbackStats ? (
               <div className="space-y-4">
                 <div className="grid grid-cols-4 gap-4">
-                  <div className="text-center p-4 bg-slate-50 rounded-lg">
-                    <p className="text-2xl font-bold">{feedbackStats.totalFeedback || 0}</p>
-                    <p className="text-sm text-slate-500">Total</p>
+                  <div className="text-center p-4 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{feedbackStats.totalFeedback || 0}</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Total</p>
                   </div>
-                  <div className="text-center p-4 bg-green-50 rounded-lg">
-                    <p className="text-2xl font-bold text-green-600">{feedbackStats.positivePercent || 0}%</p>
-                    <p className="text-sm text-green-600">👍 Positive</p>
+                  <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                    <p className="text-2xl font-bold text-green-600 dark:text-green-400">{feedbackStats.positivePercent || 0}%</p>
+                    <p className="text-sm text-green-600 dark:text-green-400">👍 Positive</p>
                   </div>
-                  <div className="text-center p-4 bg-red-50 rounded-lg">
-                    <p className="text-2xl font-bold text-red-600">{(100 - (feedbackStats.positivePercent || 0))}%</p>
-                    <p className="text-sm text-red-600">👎 Negative</p>
+                  <div className="text-center p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                    <p className="text-2xl font-bold text-red-600 dark:text-red-400">{(100 - (feedbackStats.positivePercent || 0))}%</p>
+                    <p className="text-sm text-red-600 dark:text-red-400">👎 Negative</p>
                   </div>
-                  <div className="text-center p-4 bg-blue-50 rounded-lg">
-                    <p className="text-2xl font-bold">{feedbackStats.positiveCount || 0}</p>
-                    <p className="text-sm text-blue-600">👍 Count</p>
+                  <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                    <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{feedbackStats.positiveCount || 0}</p>
+                    <p className="text-sm text-blue-600 dark:text-blue-400">👍 Count</p>
                   </div>
                 </div>
               </div>
             ) : (
-              <p className="text-slate-500">Loading feedback data...</p>
+              <p className="text-slate-500 dark:text-slate-400">Loading feedback data...</p>
             )}
           </CardContent>
         </Card>
@@ -1460,9 +1460,9 @@ export default function AdminPage() {
             <CardTitle>Student Password Management</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="mb-6 p-4 bg-blue-50 rounded-lg">
-              <h4 className="font-medium mb-2">How Password System Works</h4>
-              <ul className="text-sm text-slate-600 space-y-1">
+            <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+              <h4 className="font-medium mb-2 text-slate-900 dark:text-white">How Password System Works</h4>
+              <ul className="text-sm text-slate-600 dark:text-slate-300 space-y-1">
                 <li>• Students can set their own password after initial login</li>
                 <li>• Admins can reset passwords from this panel</li>
                 <li>• Passwords are hashed securely</li>
@@ -1470,26 +1470,26 @@ export default function AdminPage() {
               </ul>
             </div>
 
-            <h4 className="font-medium mb-4">Password Status</h4>
-            <div className="border rounded-lg overflow-hidden">
+            <h4 className="font-medium mb-4 text-slate-900 dark:text-white">Password Status</h4>
+            <div className="border dark:border-slate-700 rounded-lg overflow-hidden">
               <table className="w-full">
-                <thead className="bg-slate-50">
+                <thead className="bg-slate-100 dark:bg-slate-800">
                   <tr>
-                    <th className="text-left p-3">Name</th>
-                    <th className="text-left p-3">Email</th>
-                    <th className="text-left p-3">Status</th>
+                    <th className="text-left p-3 text-slate-700 dark:text-slate-300">Name</th>
+                    <th className="text-left p-3 text-slate-700 dark:text-slate-300">Email</th>
+                    <th className="text-left p-3 text-slate-700 dark:text-slate-300">Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {users.map((u) => (
-                    <tr key={u.user_uuid} className="border-t">
-                      <td className="p-3">{u.first_name} {u.last_name}</td>
-                      <td className="p-3 text-sm text-slate-500">{u.email}</td>
+                    <tr key={u.user_uuid} className="border-t dark:border-slate-700">
+                      <td className="p-3 text-slate-900 dark:text-white">{u.first_name} {u.last_name}</td>
+                      <td className="p-3 text-sm text-slate-500 dark:text-slate-400">{u.email}</td>
                       <td className="p-3">
                         {u.password_hash ? (
-                          <span className="text-green-600">✅ Active</span>
+                          <span className="text-green-600 dark:text-green-400">✅ Active</span>
                         ) : (
-                          <span className="text-red-500">❌ No Password</span>
+                          <span className="text-red-500 dark:text-red-400">❌ No Password</span>
                         )}
                       </td>
                     </tr>
@@ -1507,9 +1507,9 @@ export default function AdminPage() {
             <CardTitle>Kiosk PIN Management</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="mb-6 p-4 bg-blue-50 rounded-lg">
-              <h4 className="font-medium mb-2">How Kiosk Mode Works</h4>
-              <ul className="text-sm text-slate-600 space-y-1">
+            <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+              <h4 className="font-medium mb-2 text-slate-900 dark:text-white">How Kiosk Mode Works</h4>
+              <ul className="text-sm text-slate-600 dark:text-slate-300 space-y-1">
                 <li>• Students enter their PIN on the kiosk screen to check in</li>
                 <li>• PIN is 4-6 digits</li>
                 <li>• PIN is different from account password</li>
@@ -1519,7 +1519,7 @@ export default function AdminPage() {
 
             <div className="grid grid-cols-2 gap-6">
               <div>
-                <h4 className="font-medium mb-4">Change PIN</h4>
+                <h4 className="font-medium mb-4 text-slate-900 dark:text-white">Change PIN</h4>
                 <div className="space-y-4">
                   <Input
                     label="Current PIN"
@@ -1647,11 +1647,11 @@ export default function AdminPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2">Upload Backup File</label>
+                  <label className="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">Upload Backup File</label>
                   <input
                     type="file"
                     accept=".json"
-                    className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-slate-100 hover:file:bg-slate-200"
+                    className="block w-full text-sm text-slate-500 dark:text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-slate-100 dark:file:bg-slate-700 dark:file:text-white hover:file:bg-slate-200 dark:hover:file:bg-slate-600"
                     onChange={async (e) => {
                       const file = e.target.files?.[0];
                       if (!file) return;
@@ -1680,11 +1680,11 @@ export default function AdminPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-red-600">Reset Database</CardTitle>
+              <CardTitle className="text-red-600 dark:text-red-400">Reset Database</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <p className="text-sm text-slate-500">Warning: These actions cannot be undone!</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">Warning: These actions cannot be undone!</p>
                 <div className="flex gap-4">
                   <Button
                     variant="destructive"

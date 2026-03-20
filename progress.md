@@ -5,6 +5,31 @@ Martial Arts Attendance Tracking System - A full-stack application for managing 
 
 ---
 
+## RECENT UPDATES (March 20, 2026)
+
+### Dark Mode Implementation
+- ✅ Added ThemeProvider with localStorage persistence
+- ✅ Added theme toggle button to sidebar (Sun/Moon icon)
+- ✅ Dark mode CSS variables defined in globals.css
+- ✅ All UI components updated for dark mode:
+  - Card, Button, Input, Select, Badge, Avatar
+  - Tables, forms, stats cards
+  - Sidebar navigation
+- ✅ Chart colors updated to adapt to theme (useChartColors hook)
+- ✅ All pages now support dark/light mode:
+  - Home/Check-in page
+  - Student Portal page
+  - Teacher Dashboard page
+  - Admin/Settings page
+- ✅ Theme preference persists across browser sessions
+
+### Sidebar Navigation Update
+- ✅ All sidebar links visible to everyone (no auth filtering)
+- ✅ Users prompted for authentication when accessing protected pages
+- ✅ Links: Check In, Student Portal, Teacher, Admin
+
+---
+
 ## FRONTEND ASSESSMENT (Based on rebuild.md Specification)
 
 ### 1. Attendance Page (`/`)
@@ -295,4 +320,4 @@ When typing in the search box on the home/check-in page, the user search returns
 
 ---
 
-*Last Updated: March 19, 2026*
+*Last Updated: March 20, 2026*

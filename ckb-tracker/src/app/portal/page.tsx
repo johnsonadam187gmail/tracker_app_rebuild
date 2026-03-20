@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/Input';
 import { Badge, RankBadge } from '@/components/ui/Badge';
 import { Avatar } from '@/components/ui/Avatar';
 import { useAuth } from '@/hooks/useAuth';
-import NavBar from '@/components/NavBar';
+import { useChartColors } from '@/hooks/useChartColors';
 import { dashboardApi, feedbackApi, attendanceApi, usersApi } from '@/lib/api';
 import { formatDate, getDaysAgo } from '@/lib/utils';
 import type { DashboardStats, AttendanceTrend, ClassFeedback, Attendance, User } from '@/types';
@@ -29,6 +29,7 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
 export default function PortalPage() {
   const { user, logout, login, isLoading: authLoading } = useAuth();
   const router = useRouter();
+  const { colors, chartBaseOptions } = useChartColors();
   const [activeTab, setActiveTab] = useState<'analytics' | 'feedback'>('analytics');
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [attendanceTrend, setAttendanceTrend] = useState<AttendanceTrend[]>([]);
@@ -137,8 +138,7 @@ export default function PortalPage() {
   if (!user) {
     return (
       <>
-        <NavBar />
-        <main className="max-w-md mx-auto p-6">
+        <div className="max-w-md mx-auto pt-20">
           <Card>
             <CardHeader>
               <CardTitle>Student Portal Login</CardTitle>
@@ -168,7 +168,7 @@ export default function PortalPage() {
               </form>
             </CardContent>
           </Card>
-        </main>
+        </div>
       </>
     );
   }
@@ -179,37 +179,49 @@ export default function PortalPage() {
       {
         label: 'Classes',
         data: attendanceTrend.slice(-14).map(t => t.count),
-        backgroundColor: 'rgba(59, 130, 246, 0.5)',
+        backgroundColor: colors.primary,
+        borderColor: colors.primaryBorder,
+        borderWidth: 1,
       },
     ],
   };
 
   const chartOptions = {
-    responsive: true,
+    ...chartBaseOptions,
     plugins: {
+      ...chartBaseOptions.plugins,
       legend: { display: false },
     },
     scales: {
-      y: { beginAtZero: true, ticks: { stepSize: 1 } },
+      x: {
+        ...chartBaseOptions.scales.x,
+        ticks: { color: colors.textMuted },
+        grid: { display: false },
+      },
+      y: {
+        ...chartBaseOptions.scales.y,
+        beginAtZero: true,
+        ticks: { stepSize: 1, color: colors.textMuted },
+        grid: { color: colors.grid },
+      },
     },
   };
 
   return (
     <>
-      <NavBar />
-      <main className="max-w-6xl mx-auto p-6">
+      <div className="max-w-6xl mx-auto">
         <Card className="mb-6">
           <CardContent className="py-4">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-2xl font-bold">Welcome, {user.first_name}!</h1>
-                <p className="text-slate-500">Quick info: {user.email}</p>
+                <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Welcome, {user.first_name}!</h1>
+                <p className="text-slate-500 dark:text-slate-400">Quick info: {user.email}</p>
                 <div className="flex items-center gap-2 mt-2">
                   <RankBadge rank={user.rank} />
                   {user.nicknames && <Badge>{user.nicknames}</Badge>}
                 </div>
               </div>
-              <Button variant="outline" onClick={handleLogout} className="text-red-600">
+              <Button variant="outline" onClick={handleLogout} className="text-red-600 dark:text-red-400">
                 <LogOut className="w-4 h-4 mr-2" />
                 Logout
               </Button>
@@ -219,13 +231,13 @@ export default function PortalPage() {
 
         <div className="flex gap-2 mb-6">
           <Button
-            variant={activeTab === 'analytics' ? 'default' : 'outline'}
+            variant={activeTab === 'analytics' ? 'primary' : 'outline'}
             onClick={() => setActiveTab('analytics')}
           >
             📊 My Analytics
           </Button>
           <Button
-            variant={activeTab === 'feedback' ? 'default' : 'outline'}
+            variant={activeTab === 'feedback' ? 'primary' : 'outline'}
             onClick={() => setActiveTab('feedback')}
           >
             💬 Submit Feedback
@@ -393,7 +405,7 @@ export default function PortalPage() {
             </Card>
           </div>
         )}
-      </main>
+      </div>
     </>
   );
 }
