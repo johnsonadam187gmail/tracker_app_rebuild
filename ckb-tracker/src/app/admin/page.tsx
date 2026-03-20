@@ -1384,7 +1384,6 @@ export default function AdminPage() {
               )}
             </CardContent>
           </Card>
-        </Card>
         </div>
       )}
 
