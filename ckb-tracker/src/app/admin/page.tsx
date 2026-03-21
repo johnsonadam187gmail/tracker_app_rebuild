@@ -26,16 +26,15 @@ import {
   kioskApi,
 } from '@/lib/api';
 import { formatDate, DAYS_OF_WEEK } from '@/lib/utils';
-import { Camera } from 'lucide-react';
+import { Camera, LogOut } from 'lucide-react';
 import type { User, ClassSchedule, Role, Term, TermTarget, Curriculum, Lesson, GymLocation, ClassType, Rank } from '@/types';
 
 export default function AdminPage() {
-  const { user, isAdmin, isAuthenticated, isLoading } = useAuth();
+  const { user, isAdmin, isAuthenticated, isLoading, login, logout } = useAuth();
   const router = useRouter();
   const { colors } = useChartColors();
   const [activeTab, setActiveTab] = useState('users');
-  const [isLogin, setIsLogin] = useState(true);
-  const [loginForm, setLoginForm] = useState({ username: '', password: '' });
+  const [loginForm, setLoginForm] = useState({ email: '', password: '' });
   const [users, setUsers] = useState<User[]>([]);
   const [classes, setClasses] = useState<ClassSchedule[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
@@ -107,9 +106,6 @@ export default function AdminPage() {
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const adminUsername = 'admin';
-  const adminPassword = 'ckb2026';
-
   useEffect(() => {
     if (isAdmin) {
       loadAllData();
@@ -171,13 +167,12 @@ export default function AdminPage() {
     }
   };
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (loginForm.username === adminUsername && loginForm.password === adminPassword) {
-      setIsLogin(false);
-      loadAllData();
-    } else {
-      alert('Invalid credentials');
+    try {
+      await login(loginForm.email, loginForm.password, true);
+    } catch (error) {
+      alert('Invalid admin credentials');
     }
   };
 
@@ -572,7 +567,7 @@ export default function AdminPage() {
     { id: 'database', label: 'Database' },
   ];
 
-  if (isLogin) {
+  if (!isAuthenticated || !isAdmin) {
     return (
       <>
         <div className="max-w-md mx-auto pt-20">
@@ -583,9 +578,10 @@ export default function AdminPage() {
             <CardContent>
               <form onSubmit={handleLogin} className="space-y-4">
                 <Input
-                  label="Username"
-                  value={loginForm.username}
-                  onChange={(e) => setLoginForm({ ...loginForm, username: e.target.value })}
+                  label="Email"
+                  type="email"
+                  value={loginForm.email}
+                  onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })}
                 />
                 <Input
                   label="Password"
@@ -605,7 +601,16 @@ export default function AdminPage() {
   return (
     <>
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-2xl font-bold mb-6 text-slate-900 dark:text-white">Admin Settings</h1>
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Admin Settings</h1>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-slate-500 dark:text-slate-400">{user?.email}</span>
+            <Button variant="outline" size="sm" onClick={() => logout()}>
+              <LogOut className="w-4 h-4 mr-2" />
+              Logout
+            </Button>
+          </div>
+        </div>
 
       <div className="flex gap-2 mb-6 flex-wrap">
         {tabs.map((tab) => (

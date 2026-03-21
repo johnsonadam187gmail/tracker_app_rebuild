@@ -24,14 +24,13 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true,
 });
 
 api.interceptors.request.use((config) => {
-  if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('auth_token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+  const csrfToken = typeof window !== 'undefined' ? localStorage.getItem('csrf_token') : null;
+  if (csrfToken && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(config.method?.toUpperCase() || '')) {
+    config.headers['X-CSRF-Token'] = csrfToken;
   }
   return config;
 });
@@ -229,11 +228,11 @@ export const termsApi = {
 
 export const termTargetsApi = {
   list: async () => {
-    const response = await api.get<TermTarget[]>('/term-targets/');
+    const response = await api.get<TermTarget[]>('/terms/term-targets/');
     return response.data;
   },
   create: async (data: Partial<TermTarget>) => {
-    const response = await api.post('/term-targets/', data);
+    const response = await api.post('/terms/term-targets/', data);
     return response.data;
   },
 };
