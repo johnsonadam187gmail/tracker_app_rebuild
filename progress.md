@@ -5,7 +5,37 @@ Martial Arts Attendance Tracking System - A full-stack application for managing 
 
 ---
 
-## RECENT UPDATES (March 20, 2026)
+## RECENT UPDATES (March 21, 2026)
+
+### JWT Authentication with HTTP-Only Cookies (SECURITY FIX)
+- ✅ Complete rewrite of authentication system
+- ✅ Replaced localStorage tokens with HTTP-Only cookies (XSS protection)
+- ✅ New auth endpoints:
+  - `POST /auth/login` - Student login (sets httpOnly cookies)
+  - `POST /auth/teacher-login` - Teacher login (sets httpOnly cookies)
+  - `GET /auth/me` - Get current user (requires valid access cookie)
+  - `POST /auth/refresh` - Refresh access token (uses refresh cookie)
+  - `POST /auth/logout` - Clear session cookies
+  - `POST /auth/logout-all` - Clear all user sessions
+  - `GET /auth/csrf-token` - Get CSRF token
+- ✅ CSRF protection with double-submit cookie pattern
+- ✅ Token expiration: 10 minutes access, 7 days refresh
+- ✅ Multi-device support with independent sessions
+- ✅ SessionToken model for server-side token tracking/revocation
+
+### Login Flow Fixes
+- ✅ Admin login now uses proper auth (email/password via API)
+- ✅ Portal login uses proper auth
+- ✅ Teacher login uses proper auth
+- ✅ All login forms check `isAuthenticated` from useAuth hook
+
+### Logout Buttons Added
+- ✅ Student Portal - Logout button in header
+- ✅ Teacher Dashboard - Logout button in header
+- ✅ Admin Settings - Logout button in header
+
+### API Path Fix
+- ✅ Fixed termTargetsApi paths: `/term-targets/` → `/terms/term-targets/`
 
 ### Dark Mode Implementation
 - ✅ Added ThemeProvider with localStorage persistence
@@ -148,7 +178,7 @@ Martial Arts Attendance Tracking System - A full-stack application for managing 
 
 ### 4. Admin/Settings Page (`/admin`)
 
-**Login:** Hardcoded admin/ckb2026 - ✅ DONE
+**Login:** API-based email/password (admin@example.com/admin123) - ✅ DONE
 
 **Tab 1: User Admin (`User Admin`)**
 - Search: Filter by name, rank, or email - ✅ DONE
@@ -277,47 +307,22 @@ All features implemented - ✅ COMPLETE (~95%)
 
 ## KNOWN ISSUES
 
-### Issue: User Search Returns 422 Error
+### Issue: Backend Server Requires Restart for New Auth Endpoints
 
-**Date Reported:** March 19, 2026
-
-**Error:**
-```
-Console AxiosError
-Request failed with status code 422
-src/lib/api.ts (76:22) @ async Object.search
-
-74 |   },
-75 |   search: async (query: string) => {
-> 76 |     const response = await api.get<User[]>(`/users/search?q=${query}`);
-     |                      ^
-77 |     return response.data;
-78 |   },
-```
-
-**Location:** 
-- Frontend: `src/lib/api.ts:76` (usersApi.search function)
-- Trigger: `src/app/page.tsx:90` (handleSearch in AttendancePage)
+**Date Reported:** March 21, 2026
 
 **Description:**
-When typing in the search box on the home/check-in page, the user search returns a 422 (Unprocessable Entity) error. This prevents students from finding themselves to check in.
+After deploying the new JWT authentication system, the backend server must be restarted for the new `/auth/me`, `/auth/refresh`, `/auth/logout`, and `/auth/logout-all` endpoints to be available.
 
-**Possible Causes:**
-1. Backend server not running at localhost:8000
-2. Search endpoint requires authentication token
-3. API endpoint path mismatch (backend expects different format)
-4. Query parameter validation issue on backend
+**Resolution:**
+```bash
+# Stop backend (Ctrl+C) and restart:
+cd backend
+uv run uvicorn app.main:app --reload
+```
 
-**Resolution Steps:**
-1. Verify backend server is running: `curl http://localhost:8000/docs`
-2. Check backend search endpoint in `backend/app/routers/users.py:110-121`
-3. Ensure the search endpoint doesn't require authentication
-4. Verify query parameter format matches backend expectation
-5. Test search directly: `curl "http://localhost:8000/users/search?q=john"`
-6. Add error handling to frontend to show more helpful messages
-
-**Status:** OPEN - Not yet resolved
+**Status:** RESOLVED - Requires server restart
 
 ---
 
-*Last Updated: March 20, 2026*
+*Last Updated: March 21, 2026*

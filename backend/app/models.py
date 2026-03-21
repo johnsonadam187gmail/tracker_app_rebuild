@@ -228,3 +228,14 @@ class KioskAuth(Base):
     pin_hash = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class SessionToken(Base):
+    __tablename__ = "session_tokens"
+
+    id = Column(Integer, primary_key=True, index=True)
+    token_jti = Column(String, unique=True, index=True)
+    user_uuid = Column(String, ForeignKey("users.user_uuid"))
+    token_type = Column(String)
+    expires_at = Column(DateTime)
+    created_at = Column(DateTime, default=datetime.utcnow)

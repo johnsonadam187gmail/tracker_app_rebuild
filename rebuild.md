@@ -578,10 +578,19 @@ CREATE UNIQUE INDEX uix_attendance_feedback ON class_feedback(attendance_id);
 
 ## API Endpoints Summary
 
-### Authentication
-- `POST /auth/login` - Student login (email/password)
-- `POST /auth/teacher-login` - Teacher login (returns JWT)
-- `POST /auth/verify-session` - Verify and extend JWT
+#### 1. Hardcoded Admin Credentials (CRITICAL) - ✅ FIXED
+**Location:** Previously in `pages/4_Settings.py`
+**Issue:** Credentials were hardcoded in the source code.
+**Resolution:** Replaced with proper JWT/cookie-based authentication via API. Admin now uses `admin@example.com/admin123` with proper auth flow.
+**Note:** The old Streamlit version still has this issue; this applies to the Next.js rebuild only.
+- `POST /auth/login` - Student login (sets httpOnly cookies)
+- `POST /auth/teacher-login` - Teacher login (sets httpOnly cookies)
+- `GET /auth/me` - Get current user (requires valid access cookie)
+- `POST /auth/refresh` - Refresh access token (uses refresh cookie)
+- `POST /auth/logout` - Clear session cookies
+- `POST /auth/logout-all` - Clear all user sessions
+- `GET /auth/csrf-token` - Get CSRF token
+- `POST /auth/verify-session` - Verify and extend JWT (legacy)
 - `POST /auth/set-password` - Admin sets user password
 - `GET /auth/check-password/{uuid}` - Check if user has password
 - `DELETE /auth/remove-password/{uuid}` - Remove user password
@@ -661,19 +670,15 @@ CREATE UNIQUE INDEX uix_attendance_feedback ON class_feedback(attendance_id);
 
 ### Current Security Issues
 
-#### 1. Hardcoded Admin Credentials (CRITICAL)
-**Location:** `pages/4_Settings.py` lines 109-112
-```python
-if (
-    st.session_state["username"] == "admin"
-    and st.session_state["password"] == "ckb2026"
-):
-```
-**Issue:** Credentials are hardcoded in the source code. Anyone with access to the code can see them.
-**Recommendation:** 
-- Move to Supabase Auth for admin access
-- Use environment variables or Supabase RLS policies
-- Implement proper role-based access control
+#### 1. Hardcoded Admin Credentials (CRITICAL) - ✅ FIXED (Next.js)
+**Location:** Previously in `pages/4_Settings.py` (Streamlit) and login forms
+**Issue:** Credentials were hardcoded in the source code.
+**Resolution (Next.js):**
+- Replaced with proper JWT/cookie-based authentication via API
+- Admin now uses `admin@example.com/admin123` with proper auth flow
+- Session tokens stored server-side in database
+- Tokens can be revoked server-side
+- Note: The old Streamlit version still has this issue
 
 #### 2. Kiosk PIN Not Protected from Brute Force (HIGH)
 **Location:** `app/routers/kiosk.py`
@@ -685,17 +690,20 @@ if (
 
 #### 3. No HTTPS Enforcement (HIGH)
 **Issue:** The app runs over HTTP in development. In production, sensitive data (passwords, JWT tokens) could be intercepted.
+**Status:** Partially addressed with httpOnly cookies
 **Recommendation:**
 - Enforce HTTPS in production (Netlify provides this)
 - Set secure cookie flags (HttpOnly, Secure, SameSite)
 - Use HTTPS redirects
 
-#### 4. JWT Token Storage (MEDIUM)
-**Location:** Streamlit session state
-**Issue:** Tokens stored in session state on frontend. While not exposed to client-side JavaScript in Streamlit, the architecture is less secure than server-side sessions.
-**Recommendation:**
-- Use Supabase Auth tokens which handle secure storage
-- Implement token refresh mechanisms
+#### 4. JWT Token Storage (MEDIUM) - ✅ FIXED (Next.js)
+**Location:** Previously localStorage, now httpOnly cookies
+**Issue:** Tokens stored in localStorage were vulnerable to XSS attacks.
+**Resolution (Next.js):**
+- Access tokens stored in httpOnly cookies (JS cannot read)
+- Refresh tokens stored in httpOnly cookies with restricted path
+- CSRF protection via double-submit cookie pattern
+- Token revocation supported via server-side SessionToken table
 
 #### 5. No Input Sanitization (MEDIUM)
 **Issue:** User inputs (comments, nicknames, etc.) are stored and displayed without sanitization.
@@ -1251,21 +1259,24 @@ The result will be a fully functional martial arts attendance tracking system wi
 
 ## KNOWN ISSUES
 
-### User Search Returns 422 Error (March 19, 2026)
+### Backend Server Requires Restart for New Auth Endpoints (March 21, 2026)
 
-**Error:** `Request failed with status code 422` in `src/lib/api.ts:76`
+**Description:** After code updates, the backend server must be restarted for new auth endpoints to be available.
 
-**Description:** User search on the home/check-in page returns a 422 error, preventing students from finding themselves to check in.
+**Resolution:**
+```bash
+# Stop backend (Ctrl+C) and restart:
+cd backend
+uv run uvicorn app.main:app --reload
+```
 
-**Root Cause:** The `/users/search` endpoint is returning a validation error.
+### User Search Endpoint (RESOLVED)
 
-**Resolution Steps:**
-1. Verify backend is running at localhost:8000
-2. Test endpoint directly: `curl "http://localhost:8000/users/search?q=john"`
-3. Check if endpoint requires authentication header
-4. Verify query parameter format matches backend expectation
-5. Add proper error handling in frontend
+The `/users/search` endpoint now:
+- Does NOT require authentication (public for kiosk/check-in)
+- Uses query parameter `query` (not `q`)
+- Returns user data for check-in flow
 
 ---
 
-**Last Updated:** March 19, 2026
+**Last Updated:** March 21, 2026

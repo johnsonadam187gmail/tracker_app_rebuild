@@ -61,7 +61,7 @@ def list_users(db: Session = Depends(get_db)):
     return db.query(models.User).filter(models.User.is_current == True).all()
 
 
-@router.get("/search", response_model=List[schemas.UserResponse])
+@router.get("/search", response_model=List[schemas.UserResponse], dependencies=[])
 def search_users(query: str, db: Session = Depends(get_db)):
     return (
         db.query(models.User)

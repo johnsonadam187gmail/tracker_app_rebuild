@@ -9,10 +9,11 @@ import { Avatar } from '@/components/ui/Avatar';
 import { useAuth } from '@/hooks/useAuth';
 import { classesApi, attendanceApi, feedbackApi, usersApi } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
+import { LogOut } from 'lucide-react';
 import type { ClassSchedule, Attendance, User, ClassFeedback } from '@/types';
 
 export default function TeacherPage() {
-  const { user, isTeacher, isAdmin, logout, teacherLogin } = useAuth();
+  const { user, isTeacher, isAdmin, logout, login } = useAuth();
   const [activeTab, setActiveTab] = useState<'attendance' | 'roster' | 'feedback'>('attendance');
   const [classes, setClasses] = useState<ClassSchedule[]>([]);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
@@ -193,9 +194,9 @@ export default function TeacherPage() {
     e.preventDefault();
     setLoginError('');
     try {
-      await teacherLogin(loginForm.email, loginForm.password);
+      await login(loginForm.email, loginForm.password, true);
     } catch (error) {
-      setLoginError('Invalid email or password');
+      setLoginError('Invalid credentials or not a teacher');
     }
   };
 
@@ -297,7 +298,16 @@ export default function TeacherPage() {
     <>
       
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-2xl font-bold mb-6 text-slate-900 dark:text-white">Teacher Dashboard</h1>
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Teacher Dashboard</h1>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-slate-500 dark:text-slate-400">{user?.email}</span>
+            <Button variant="outline" size="sm" onClick={() => logout()}>
+              <LogOut className="w-4 h-4 mr-2" />
+              Logout
+            </Button>
+          </div>
+        </div>
 
       <div className="flex gap-2 mb-6">
         <Button

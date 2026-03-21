@@ -1,23 +1,31 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response, Request, Cookie
 from sqlalchemy.orm import Session
 from app.database import SessionLocal
 from app import models, schemas
-import bcrypt
-from datetime import datetime
-from typing import List
-import secrets
+from passlib.context import CryptContext
+from datetime import datetime, timedelta, timezone
+from typing import Optional, List
+from app.auth.config import (
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+    REFRESH_TOKEN_EXPIRE_DAYS,
+    COOKIE_HTTPONLY,
+    COOKIE_SAMESITE,
+    COOKIE_SECURE,
+    CSRF_TOKEN_COOKIE_NAME,
+)
+from app.auth.jwt_utils import (
+    create_access_token,
+    create_refresh_token,
+    decode_token,
+    store_token_record,
+    revoke_token,
+    revoke_all_user_tokens,
+    is_token_valid,
+)
+from app.auth.csrf import generate_csrf_token
 
 router = APIRouter()
-
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return bcrypt.checkpw(
-        plain_password.encode("utf-8"), hashed_password.encode("utf-8")
-    )
-
-
-def hash_password(password: str) -> str:
-    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def get_db():
@@ -28,122 +36,320 @@ def get_db():
         db.close()
 
 
-@router.post("/login", response_model=schemas.TokenResponse)
-def login(data: schemas.LoginRequest, db: Session = Depends(get_db)):
-    user = (
-        db.query(models.User)
-        .filter(models.User.email == data.email, models.User.is_current == True)
-        .first()
-    )
-    if not user or not user.password_hash:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-
-    if not verify_password(data.password, user.password_hash):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-
-    roles = (
-        db.query(models.UserRole)
-        .filter(
-            models.UserRole.user_uuid == user.user_uuid,
-            models.UserRole.is_current == True,
-        )
-        .all()
-    )
-
-    role_objs = []
-    for ur in roles:
-        role = db.query(models.Role).filter(models.Role.id == ur.role_id).first()
-        if role:
-            role_objs.append(
-                schemas.RoleResponse(
-                    id=role.id, name=role.name, description=role.description
-                )
-            )
-
-    token = secrets.token_urlsafe(32)
-    return schemas.TokenResponse(
-        access_token=token,
-        user=schemas.UserResponse.model_validate(user),
-        roles=role_objs,
-    )
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    if not hashed_password:
+        return False
+    return pwd_context.verify(plain_password, hashed_password)
 
 
-@router.post("/teacher-login", response_model=schemas.TokenResponse)
-def teacher_login(data: schemas.LoginRequest, db: Session = Depends(get_db)):
-    user = (
-        db.query(models.User)
-        .filter(models.User.email == data.email, models.User.is_current == True)
-        .first()
-    )
-    if not user or not user.password_hash:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-
-    if not verify_password(data.password, user.password_hash):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-
-    # Check if user has Teacher role
+def get_user_roles(db, user_uuid: str) -> List[dict]:
     user_roles = (
         db.query(models.UserRole)
         .filter(
-            models.UserRole.user_uuid == user.user_uuid,
-            models.UserRole.is_current == True,
+            models.UserRole.user_uuid == user_uuid, models.UserRole.is_current == True
         )
         .all()
     )
-
-    role_objs = []
+    roles = []
     for ur in user_roles:
         role = db.query(models.Role).filter(models.Role.id == ur.role_id).first()
         if role:
-            role_objs.append(
-                schemas.RoleResponse(
-                    id=role.id, name=role.name, description=role.description
-                )
+            roles.append(
+                {
+                    "id": int(role.id),
+                    "name": str(role.name),
+                    "description": str(role.description) if role.description else None,
+                }
             )
+    return roles
 
-    is_teacher = any(r.name == "Teacher" for r in role_objs)
-    is_admin = any(r.name == "Admin" for r in role_objs)
+
+def get_current_user(
+    access_token: Optional[str] = Cookie(None), db: Session = Depends(get_db)
+):
+    if not access_token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    payload = decode_token(access_token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    if payload.get("type") != "access":
+        raise HTTPException(status_code=401, detail="Invalid token type")
+
+    jti = payload.get("jti")
+    if not is_token_valid(db, jti):
+        raise HTTPException(status_code=401, detail="Token revoked")
+
+    user_uuid = payload.get("sub")
+    user = (
+        db.query(models.User)
+        .filter(models.User.user_uuid == user_uuid, models.User.is_current == True)
+        .first()
+    )
+
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+
+    return user
+
+
+def set_auth_cookies(
+    response: Response, access_token: str, refresh_token: str, csrf_token: str
+):
+    access_expire = ACCESS_TOKEN_EXPIRE_MINUTES * 60
+    refresh_expire = REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60
+
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        max_age=access_expire,
+        httponly=True,
+        samesite=COOKIE_SAMESITE,
+        secure=COOKIE_SECURE,
+        path="/",
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        max_age=refresh_expire,
+        httponly=True,
+        samesite=COOKIE_SAMESITE,
+        secure=COOKIE_SECURE,
+        path="/auth/refresh",
+    )
+    response.set_cookie(
+        key=CSRF_TOKEN_COOKIE_NAME,
+        value=csrf_token,
+        max_age=access_expire,
+        httponly=False,
+        samesite=COOKIE_SAMESITE,
+        secure=COOKIE_SECURE,
+        path="/",
+    )
+
+
+def clear_auth_cookies(response: Response):
+    response.delete_cookie("access_token", path="/")
+    response.delete_cookie("refresh_token", path="/auth/refresh")
+    response.delete_cookie(CSRF_TOKEN_COOKIE_NAME, path="/")
+
+
+@router.post("/login")
+def login(
+    data: schemas.LoginRequest, response: Response, db: Session = Depends(get_db)
+):
+    user = (
+        db.query(models.User)
+        .filter(models.User.email == data.email, models.User.is_current == True)
+        .first()
+    )
+
+    if not user or not user.password_hash:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    if not verify_password(data.password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    roles = get_user_roles(db, user.user_uuid)
+
+    access_token, access_jti = create_access_token(user.user_uuid)
+    refresh_token, refresh_jti = create_refresh_token(user.user_uuid)
+
+    store_token_record(
+        db,
+        access_jti,
+        user.user_uuid,
+        "access",
+        datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
+    )
+    store_token_record(
+        db,
+        refresh_jti,
+        user.user_uuid,
+        "refresh",
+        datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
+    )
+
+    csrf_token = generate_csrf_token()
+    set_auth_cookies(response, access_token, refresh_token, csrf_token)
+
+    return {
+        "user": schemas.UserResponse.model_validate(user),
+        "roles": roles,
+        "csrf_token": csrf_token,
+    }
+
+
+@router.post("/teacher-login")
+def teacher_login(
+    data: schemas.LoginRequest, response: Response, db: Session = Depends(get_db)
+):
+    user = (
+        db.query(models.User)
+        .filter(models.User.email == data.email, models.User.is_current == True)
+        .first()
+    )
+
+    if not user or not user.password_hash:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    if not verify_password(data.password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    roles = get_user_roles(db, user.user_uuid)
+    is_teacher = any(r["name"] == "Teacher" for r in roles)
+    is_admin = any(r["name"] == "Admin" for r in roles)
 
     if not is_teacher and not is_admin:
         raise HTTPException(status_code=403, detail="Teacher role required")
 
-    token = secrets.token_urlsafe(32)
-    return schemas.TokenResponse(
-        access_token=token,
-        user=schemas.UserResponse.model_validate(user),
-        roles=role_objs,
+    access_token, access_jti = create_access_token(user.user_uuid)
+    refresh_token, refresh_jti = create_refresh_token(user.user_uuid)
+
+    store_token_record(
+        db,
+        access_jti,
+        user.user_uuid,
+        "access",
+        datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
+    )
+    store_token_record(
+        db,
+        refresh_jti,
+        user.user_uuid,
+        "refresh",
+        datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
     )
 
+    csrf_token = generate_csrf_token()
+    set_auth_cookies(response, access_token, refresh_token, csrf_token)
 
-@router.post("/verify-session")
-def verify_session(db: Session = Depends(get_db)):
-    # Simplified - in production would verify JWT token
-    return {"message": "Session verified"}
+    return {
+        "user": schemas.UserResponse.model_validate(user),
+        "roles": roles,
+        "csrf_token": csrf_token,
+    }
 
 
-@router.get("/check-password/{user_uuid}")
-def check_password(user_uuid: str, db: Session = Depends(get_db)):
+@router.post("/refresh")
+def refresh_token(
+    request: Request,
+    response: Response,
+    refresh_token: Optional[str] = Cookie(None),
+    db: Session = Depends(get_db),
+):
+    if not refresh_token:
+        raise HTTPException(status_code=401, detail="Refresh token required")
+
+    payload = decode_token(refresh_token)
+    if not payload or payload.get("type") != "refresh":
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
+
+    jti = payload.get("jti")
+    if not is_token_valid(db, jti):
+        raise HTTPException(status_code=401, detail="Refresh token revoked")
+
+    user_uuid = payload.get("sub")
     user = (
         db.query(models.User)
         .filter(models.User.user_uuid == user_uuid, models.User.is_current == True)
         .first()
     )
+
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=401, detail="User not found")
 
-    return {"has_password": user.password_hash is not None}
+    roles = get_user_roles(db, user_uuid)
 
+    access_token, access_jti = create_access_token(user_uuid)
+    new_refresh_token, refresh_jti = create_refresh_token(user_uuid)
 
-@router.delete("/remove-password/{user_uuid}")
-def remove_password(user_uuid: str, db: Session = Depends(get_db)):
-    user = (
-        db.query(models.User)
-        .filter(models.User.user_uuid == user_uuid, models.User.is_current == True)
-        .first()
+    store_token_record(
+        db,
+        access_jti,
+        user_uuid,
+        "access",
+        datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
     )
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+    store_token_record(
+        db,
+        refresh_jti,
+        user_uuid,
+        "refresh",
+        datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
+    )
 
-    user.password_hash = None
-    db.commit()
-    return {"message": "Password removed"}
+    csrf_token = generate_csrf_token()
+    set_auth_cookies(response, access_token, new_refresh_token, csrf_token)
+
+    return {
+        "user": schemas.UserResponse.model_validate(user),
+        "roles": roles,
+        "csrf_token": csrf_token,
+    }
+
+
+@router.post("/logout")
+def logout(
+    response: Response,
+    request: Request,
+    access_token: Optional[str] = Cookie(None),
+    refresh_token: Optional[str] = Cookie(None),
+    db: Session = Depends(get_db),
+):
+    if access_token:
+        payload = decode_token(access_token)
+        if payload and payload.get("jti"):
+            revoke_token(db, payload.get("jti"))
+
+    if refresh_token:
+        payload = decode_token(refresh_token)
+        if payload and payload.get("jti"):
+            revoke_token(db, payload.get("jti"))
+
+    clear_auth_cookies(response)
+    return {"message": "Logged out successfully"}
+
+
+@router.post("/logout-all")
+def logout_all(
+    response: Response,
+    access_token: Optional[str] = Cookie(None),
+    db: Session = Depends(get_db),
+):
+    if access_token:
+        payload = decode_token(access_token)
+        if payload and payload.get("sub"):
+            revoke_all_user_tokens(db, payload.get("sub"))
+
+    clear_auth_cookies(response)
+    return {"message": "Logged out from all devices"}
+
+
+@router.get("/me")
+def get_current_user_info(
+    user: models.User = Depends(get_current_user), db: Session = Depends(get_db)
+):
+    roles = get_user_roles(db, user.user_uuid)
+    csrf_token = generate_csrf_token()
+    response = {
+        "user": schemas.UserResponse.model_validate(user),
+        "roles": roles,
+        "csrf_token": csrf_token,
+    }
+
+    class MockResponse:
+        def set_cookie(self, key, value, max_age, httponly, samesite, secure, path):
+            pass
+
+    set_auth_cookies(MockResponse(), "", "", csrf_token)
+
+    return response
+
+
+@router.get("/csrf-token")
+def get_csrf_token(csrf_token: Optional[str] = Cookie(None)):
+    if not csrf_token:
+        return {"csrf_token": generate_csrf_token()}
+    return {"csrf_token": csrf_token}

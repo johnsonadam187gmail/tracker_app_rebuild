@@ -1,0 +1,16 @@
+import os
+import secrets
+
+ACCESS_TOKEN_EXPIRE_MINUTES = 10
+REFRESH_TOKEN_EXPIRE_DAYS = 7
+
+COOKIE_SECURE = False
+COOKIE_SAMESITE = "lax"
+COOKIE_HTTPONLY = True
+COOKIE_PATH = "/"
+
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY") or secrets.token_urlsafe(64)
+JWT_ALGORITHM = "HS256"
+
+CSRF_TOKEN_COOKIE_NAME = "csrf_token"
+CSRF_HEADER_NAME = "X-CSRF-Token"

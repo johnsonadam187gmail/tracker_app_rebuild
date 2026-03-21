@@ -282,6 +282,13 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
     user: UserResponse
     roles: List[RoleResponse] = []
+    csrf_token: Optional[str] = None
+
+
+class UserInfoResponse(BaseModel):
+    user: UserResponse
+    roles: List[RoleResponse] = []
+    csrf_token: Optional[str] = None
 
 
 class DashboardStats(BaseModel):
