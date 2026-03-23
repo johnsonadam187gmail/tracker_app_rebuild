@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
@@ -22,8 +22,12 @@ import {
   X,
   ChevronRight,
   AlertCircle,
-  Check
+  Check,
+  Calendar
 } from 'lucide-react';
+
+const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const TIME_SLOTS = ['06:00', '07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00'];
 
 export default function AttendancePage() {
   const router = useRouter();
@@ -291,6 +295,45 @@ export default function AttendancePage() {
   };
 
   const hasCheckedIn = todayAttendance.length > 0;
+
+  const classesByDayAndTime = useMemo(() => {
+    const map: Record<string, Record<string, ClassSchedule[]>> = {};
+    DAYS_OF_WEEK.forEach(day => {
+      map[day] = {};
+      TIME_SLOTS.forEach(slot => {
+        map[day][slot] = [];
+      });
+    });
+    classes.forEach(cls => {
+      if (map[cls.day] && map[cls.day][cls.time]) {
+        map[cls.day][cls.time].push(cls);
+      }
+    });
+    return map;
+  }, [classes]);
+
+  const today = DAYS_OF_WEEK[new Date().getDay() === 0 ? 6 : new Date().getDay() - 1];
+  const [selectedClass, setSelectedClass] = useState<ClassSchedule | null>(null);
+  const [showCheckInConfirm, setShowCheckInConfirm] = useState(false);
+
+  const handleClassClick = (cls: ClassSchedule) => {
+    const { status, attendance } = getAttendanceStatus(cls.id);
+    if (status === 'not_checked_in') {
+      setSelectedClass(cls);
+      setShowCheckInConfirm(true);
+    } else if (status === 'pending' && attendance) {
+      if (confirm('Cancel this check-in?')) {
+        handleCancelCheckIn(attendance.id);
+      }
+    }
+  };
+
+  const confirmCheckIn = async () => {
+    if (!selectedClass) return;
+    await handleCheckIn(selectedClass.id);
+    setSelectedClass(null);
+    setShowCheckInConfirm(false);
+  };
 
   const formatTimeLeft = () => {
     const minutes = Math.floor(sessionTimeLeft / 60);
@@ -609,72 +652,89 @@ export default function AttendancePage() {
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle>Today&apos;s Classes</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="w-5 h-5" />
+                  Weekly Schedule
+                </CardTitle>
                 <span className="text-sm text-slate-500 dark:text-slate-400">
-                  {todayAttendance.length} / {classes.length} checked in
+                  {todayAttendance.length} checked in today
                 </span>
               </div>
             </CardHeader>
             <CardContent>
               {classes.length > 0 ? (
-                <div className="space-y-3">
-                  {classes.map((cls) => {
-                    const { status, attendance } = getAttendanceStatus(cls.id);
-                    
-                    return (
-                      <div
-                        key={cls.id}
-                        className={cn(
-                          "flex items-center justify-between p-4 rounded-xl border transition-all",
-                          status === 'confirmed' 
-                            ? "bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800"
-                            : status === 'pending'
-                            ? "bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800"
-                            : "bg-white border-slate-200 dark:bg-slate-800/50 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
-                        )}
-                      >
-                        <div>
-                          <p className="font-semibold text-slate-900 dark:text-white">{cls.class_name}</p>
-                          <p className="text-sm text-slate-500 dark:text-slate-400">
-                            {cls.day} {cls.time} &bull; {cls.points} pts
-                          </p>
-                        </div>
-                        <div>
-                          {status === 'not_checked_in' && (
-                            <Button 
-                              onClick={() => handleCheckIn(cls.id)} 
-                              disabled={isLoading}
-                              isLoading={isLoading}
-                            >
-                              Check In
-                            </Button>
-                          )}
-                          {status === 'pending' && (
-                            <div className="flex items-center gap-2">
-                              <span className="px-3 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-full text-sm font-medium">
-                                Pending
-                              </span>
-                              <Button 
-                                variant="ghost" 
-                                size="sm"
-                                onClick={() => handleCancelCheckIn(attendance!.id)}
-                                className="text-red-500 hover:text-red-600"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          )}
-                          {status === 'confirmed' && (
-                            <span className="px-3 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-full text-sm font-medium flex items-center gap-1">
-                              <CheckCircle2 className="w-4 h-4" />
-                              Confirmed
-                            </span>
-                          )}
-                        </div>
+                <>
+                  <div className="mb-4 flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+                    <span className="px-2 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded">Checked In</span>
+                    <span className="px-2 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded">Pending</span>
+                    <span className="px-2 py-1 bg-slate-100 dark:bg-slate-700 rounded">Available</span>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <div className="min-w-[800px]">
+                      <div className="grid grid-cols-8 gap-2 mb-2">
+                        <div className="text-center font-medium text-sm text-slate-500 dark:text-slate-400 py-2">Time</div>
+                        {DAYS_OF_WEEK.map(day => (
+                          <div 
+                            key={day} 
+                            className={cn(
+                              "text-center font-medium text-sm py-2 rounded",
+                              day === today ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400" : "text-slate-600 dark:text-slate-300"
+                            )}
+                          >
+                            {day.slice(0, 3)}
+                            {day === today && <span className="ml-1 text-xs">(Today)</span>}
+                          </div>
+                        ))}
                       </div>
-                    );
-                  })}
-                </div>
+                      {TIME_SLOTS.map(slot => {
+                        const hasClassesOnDay = DAYS_OF_WEEK.some(day => classesByDayAndTime[day][slot].length > 0);
+                        if (!hasClassesOnDay) return null;
+                        return (
+                          <div key={slot} className="grid grid-cols-8 gap-2 mb-2">
+                            <div className="text-center text-sm text-slate-500 dark:text-slate-400 py-3">
+                              {slot}
+                            </div>
+                            {DAYS_OF_WEEK.map(day => {
+                              const dayClasses = classesByDayAndTime[day][slot];
+                              return (
+                                <div key={day} className="min-h-[80px] p-1">
+                                  {dayClasses.map(cls => {
+                                    const { status } = getAttendanceStatus(cls.id);
+                                    return (
+                                      <button
+                                        key={cls.id}
+                                        onClick={() => handleClassClick(cls)}
+                                        className={cn(
+                                          "w-full text-left p-2 rounded-lg text-xs mb-1 transition-all",
+                                          status === 'confirmed' 
+                                            ? "bg-emerald-100 dark:bg-emerald-900/40 border border-emerald-300 dark:border-emerald-700 cursor-default"
+                                            : status === 'pending'
+                                            ? "bg-amber-100 dark:bg-amber-900/40 border border-amber-300 dark:border-amber-700 cursor-pointer hover:bg-amber-200 dark:hover:bg-amber-900/60"
+                                            : "bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 hover:border-blue-400 dark:hover:border-blue-500 cursor-pointer"
+                                        )}
+                                      >
+                                        <p className="font-semibold text-slate-900 dark:text-white truncate">{cls.class_name}</p>
+                                        <p className="text-slate-500 dark:text-slate-400">{cls.points} pts</p>
+                                        {status === 'confirmed' && (
+                                          <p className="text-emerald-600 dark:text-emerald-400 mt-1 flex items-center gap-1">
+                                            <CheckCircle2 className="w-3 h-3" /> Done
+                                          </p>
+                                        )}
+                                        {status === 'pending' && (
+                                          <p className="text-amber-600 dark:text-amber-400 mt-1">Pending</p>
+                                        )}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
               ) : (
                 <div className="text-center py-8">
                   <div className="w-12 h-12 mx-auto mb-3 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center">
@@ -684,14 +744,42 @@ export default function AttendancePage() {
                 </div>
               )}
             </CardContent>
-            {hasCheckedIn && (
-              <CardFooter className="flex gap-3">
-                <Button className="flex-1" onClick={handleComplete}>
-                  <CheckCircle2 className="w-4 h-4 mr-2" />
-                  Complete Session
-                </Button>
+
+            {showCheckInConfirm && selectedClass && (
+              <CardFooter className="border-t dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+                <div className="flex items-center justify-between w-full">
+                  <div>
+                    <p className="font-medium text-slate-900 dark:text-white">
+                      Check in to {selectedClass.class_name}?
+                    </p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                      {selectedClass.day} at {selectedClass.time} • {selectedClass.points} points
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => { setSelectedClass(null); setShowCheckInConfirm(false); }}>
+                      Cancel
+                    </Button>
+                    <Button size="sm" onClick={confirmCheckIn} disabled={isLoading} isLoading={isLoading}>
+                      <CheckCircle2 className="w-4 h-4 mr-1" />
+                      Confirm Check In
+                    </Button>
+                  </div>
+                </div>
+              </CardFooter>
+            )}
+
+            {!showCheckInConfirm && (
+              <CardFooter className="flex gap-3 border-t dark:border-slate-700">
+                {hasCheckedIn && (
+                  <Button className="flex-1" onClick={handleComplete}>
+                    <CheckCircle2 className="w-4 h-4 mr-2" />
+                    Complete Session
+                  </Button>
+                )}
                 <Button variant="outline" onClick={handleStartOver}>
-                  Start Over
+                  <X className="w-4 h-4 mr-2" />
+                  {hasCheckedIn ? 'Cancel / Start Over' : 'Cancel Session'}
                 </Button>
               </CardFooter>
             )}

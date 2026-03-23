@@ -29,9 +29,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isAdmin = roles.some(r => r.name === 'Admin');
   const isAuthenticated = Boolean(user);
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
   const logout = async () => {
     try {
-      await fetch('http://localhost:8000/auth/logout', {
+      await fetch(`${API_BASE_URL}/auth/logout`, {
         method: 'POST',
         credentials: 'include',
       });
@@ -47,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logoutAll = async () => {
     try {
-      await fetch('http://localhost:8000/auth/logout-all', {
+      await fetch(`${API_BASE_URL}/auth/logout-all`, {
         method: 'POST',
         credentials: 'include',
       });
@@ -64,7 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshSession = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('http://localhost:8000/auth/me', {
+      const response = await fetch(`${API_BASE_URL}/auth/me`, {
         method: 'GET',
         credentials: 'include',
       });
@@ -78,7 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           localStorage.setItem('csrf_token', data.csrf_token);
         }
       } else {
-        const refreshResponse = await fetch('http://localhost:8000/auth/refresh', {
+        const refreshResponse = await fetch(`${API_BASE_URL}/auth/refresh`, {
           method: 'POST',
           credentials: 'include',
         });
@@ -111,7 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string, isTeacherLogin = false) => {
     const endpoint = isTeacherLogin ? '/auth/teacher-login' : '/auth/login';
 
-    const response = await fetch(`http://localhost:8000${endpoint}`, {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

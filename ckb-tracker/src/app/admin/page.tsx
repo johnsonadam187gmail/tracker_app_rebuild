@@ -1438,11 +1438,11 @@ export default function AdminPage() {
                     <p className="text-sm text-slate-500 dark:text-slate-400">Total</p>
                   </div>
                   <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                    <p className="text-2xl font-bold text-green-600 dark:text-green-400">{feedbackStats.positivePercent || 0}%</p>
+                    <p className="text-2xl font-bold text-green-600 dark:text-green-400">{Number(feedbackStats.positivePercent || 0).toFixed(0)}%</p>
                     <p className="text-sm text-green-600 dark:text-green-400">👍 Positive</p>
                   </div>
                   <div className="text-center p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
-                    <p className="text-2xl font-bold text-red-600 dark:text-red-400">{(100 - (feedbackStats.positivePercent || 0))}%</p>
+                    <p className="text-2xl font-bold text-red-600 dark:text-red-400">{Number(100 - (feedbackStats.positivePercent || 0)).toFixed(0)}%</p>
                     <p className="text-sm text-red-600 dark:text-red-400">👎 Negative</p>
                   </div>
                   <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
