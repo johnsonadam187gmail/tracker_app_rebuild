@@ -435,6 +435,17 @@ export default function AdminPage() {
 
   const handleCreateClassInstance = async () => {
     if (!classInstanceForm.class_id || !classInstanceForm.date) return;
+    
+    const selectedDate = new Date(classInstanceForm.date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    if (selectedDate < today) {
+      if (!confirm('You are creating an assignment for a past date. Are you sure you want to continue?')) {
+        return;
+      }
+    }
+    
     setIsProcessing(true);
     try {
       await classInstancesApi.create({
@@ -456,6 +467,17 @@ export default function AdminPage() {
 
   const handleCreateTeacherAssignment = async () => {
     if (!teacherAssignmentForm.class_id || !teacherAssignmentForm.date || !teacherAssignmentForm.teacher_uuid) return;
+    
+    const selectedDate = new Date(teacherAssignmentForm.date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    if (selectedDate < today) {
+      if (!confirm('You are assigning a teacher to a past date. Are you sure you want to continue?')) {
+        return;
+      }
+    }
+    
     setIsProcessing(true);
     try {
       await classInstancesApi.create({

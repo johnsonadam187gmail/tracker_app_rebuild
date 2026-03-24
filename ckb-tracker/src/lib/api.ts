@@ -109,7 +109,7 @@ export const classesApi = {
 };
 
 export const classInstancesApi = {
-  list: async (params?: { class_id?: number; date?: string }) => {
+  list: async (params?: { class_id?: number; date?: string; start_date?: string; end_date?: string }) => {
     const response = await api.get<ClassInstance[]>('/class-instances/', { params });
     return response.data;
   },

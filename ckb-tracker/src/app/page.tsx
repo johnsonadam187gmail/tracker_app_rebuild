@@ -29,6 +29,21 @@ import {
 const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const TIME_SLOTS = ['06:00', '07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00'];
 
+const isClassInPast = (day: string, time: string | undefined): boolean => {
+  if (!time) return false;
+  const now = new Date();
+  const todayDayIndex = now.getDay() === 0 ? 6 : now.getDay() - 1;
+  const classDayIndex = DAYS_OF_WEEK.indexOf(day);
+  
+  if (classDayIndex < todayDayIndex) return true;
+  if (classDayIndex === todayDayIndex) {
+    const [classHour] = time.split(':').map(Number);
+    if (classHour < now.getHours()) return true;
+    if (classHour === now.getHours() && now.getMinutes() > 0) return true;
+  }
+  return false;
+};
+
 export default function AttendancePage() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
@@ -305,7 +320,7 @@ export default function AttendancePage() {
       });
     });
     classes.forEach(cls => {
-      if (map[cls.day] && map[cls.day][cls.time]) {
+      if (cls.day && cls.time && map[cls.day] && map[cls.day][cls.time]) {
         map[cls.day][cls.time].push(cls);
       }
     });
@@ -317,6 +332,9 @@ export default function AttendancePage() {
   const [showCheckInConfirm, setShowCheckInConfirm] = useState(false);
 
   const handleClassClick = (cls: ClassSchedule) => {
+    if (isClassInPast(cls.day!, cls.time)) {
+      return;
+    }
     const { status, attendance } = getAttendanceStatus(cls.id);
     if (status === 'not_checked_in') {
       setSelectedClass(cls);
@@ -700,13 +718,17 @@ export default function AttendancePage() {
                                 <div key={day} className="min-h-[80px] p-1">
                                   {dayClasses.map(cls => {
                                     const { status } = getAttendanceStatus(cls.id);
+                                    const isPast = isClassInPast(cls.day!, cls.time);
                                     return (
                                       <button
                                         key={cls.id}
                                         onClick={() => handleClassClick(cls)}
+                                        disabled={isPast}
                                         className={cn(
                                           "w-full text-left p-2 rounded-lg text-xs mb-1 transition-all",
-                                          status === 'confirmed' 
+                                          isPast
+                                            ? "bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 cursor-not-allowed opacity-50"
+                                            : status === 'confirmed' 
                                             ? "bg-emerald-100 dark:bg-emerald-900/40 border border-emerald-300 dark:border-emerald-700 cursor-default"
                                             : status === 'pending'
                                             ? "bg-amber-100 dark:bg-amber-900/40 border border-amber-300 dark:border-amber-700 cursor-pointer hover:bg-amber-200 dark:hover:bg-amber-900/60"
@@ -715,12 +737,15 @@ export default function AttendancePage() {
                                       >
                                         <p className="font-semibold text-slate-900 dark:text-white truncate">{cls.class_name}</p>
                                         <p className="text-slate-500 dark:text-slate-400">{cls.points} pts</p>
-                                        {status === 'confirmed' && (
+                                        {isPast && (
+                                          <p className="text-slate-400 dark:text-slate-500 mt-1">Past</p>
+                                        )}
+                                        {status === 'confirmed' && !isPast && (
                                           <p className="text-emerald-600 dark:text-emerald-400 mt-1 flex items-center gap-1">
                                             <CheckCircle2 className="w-3 h-3" /> Done
                                           </p>
                                         )}
-                                        {status === 'pending' && (
+                                        {status === 'pending' && !isPast && (
                                           <p className="text-amber-600 dark:text-amber-400 mt-1">Pending</p>
                                         )}
                                       </button>

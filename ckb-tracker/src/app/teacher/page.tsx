@@ -1,16 +1,33 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Avatar } from '@/components/ui/Avatar';
+import { Calendar } from '@/components/ui/Calendar';
 import { useAuth } from '@/hooks/useAuth';
-import { classesApi, attendanceApi, feedbackApi, usersApi } from '@/lib/api';
+import { classesApi, attendanceApi, feedbackApi, usersApi, classInstancesApi } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
-import { LogOut } from 'lucide-react';
-import type { ClassSchedule, Attendance, User, ClassFeedback } from '@/types';
+import { LogOut, X, Calendar as CalendarIcon, Users } from 'lucide-react';
+import { startOfWeek, endOfWeek, format, parseISO } from 'date-fns';
+import type { ClassSchedule, Attendance, User, ClassFeedback, ClassInstance } from '@/types';
+
+const isClassInstanceInPast = (instance: ClassInstance | null): boolean => {
+  if (!instance) return false;
+  const schedule = instance.class_schedule;
+  if (!schedule?.time) return false;
+  
+  const now = new Date();
+  const classDate = parseISO(instance.class_date);
+  const [classHour, classMinute] = schedule.time.split(':').map(Number);
+  
+  const classDateTime = new Date(classDate);
+  classDateTime.setHours(classHour, classMinute, 0, 0);
+  
+  return classDateTime < now;
+};
 
 export default function TeacherPage() {
   const { user, isTeacher, isAdmin, logout, login } = useAuth();
@@ -18,6 +35,8 @@ export default function TeacherPage() {
   const [classes, setClasses] = useState<ClassSchedule[]>([]);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedClass, setSelectedClass] = useState<number | ''>('');
+  const [selectedClassInstance, setSelectedClassInstance] = useState<ClassInstance | null>(null);
+  const [classInstances, setClassInstances] = useState<ClassInstance[]>([]);
   const [attendance, setAttendance] = useState<Attendance[]>([]);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [selectedStudents, setSelectedStudents] = useState<number[]>([]);
@@ -33,6 +52,26 @@ export default function TeacherPage() {
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
   const [loginError, setLoginError] = useState('');
 
+  const currentWeekStart = useMemo(
+    () => startOfWeek(new Date(), { weekStartsOn: 1 }),
+    []
+  );
+  const currentWeekEnd = useMemo(
+    () => endOfWeek(new Date(), { weekStartsOn: 1 }),
+    []
+  );
+
+  const attendanceCounts = useMemo(() => {
+    const counts: Record<number, { total: number; pending: number }> = {};
+    classInstances.forEach((instance) => {
+      const classId = instance.class_id;
+      if (!counts[classId]) {
+        counts[classId] = { total: 0, pending: 0 };
+      }
+    });
+    return counts;
+  }, [classInstances]);
+
   useEffect(() => {
     if (isTeacher || isAdmin) {
       loadInitialData();
@@ -44,26 +83,39 @@ export default function TeacherPage() {
   }, []);
 
   useEffect(() => {
+    if (selectedClassInstance) {
+      setSelectedClass(selectedClassInstance.class_id);
+      setSelectedDate(selectedClassInstance.class_date);
+      loadAttendance(selectedClassInstance.class_id, selectedClassInstance.class_date);
+    }
+  }, [selectedClassInstance]);
+
+  useEffect(() => {
     if (selectedClass && selectedDate) {
-      loadAttendance();
+      loadAttendance(selectedClass as number, selectedDate);
     }
   }, [selectedClass, selectedDate]);
 
   useEffect(() => {
     if (autoRefresh && selectedClass && selectedDate) {
-      const interval = setInterval(loadAttendance, 5000);
+      const interval = setInterval(() => loadAttendance(selectedClass as number, selectedDate), 5000);
       return () => clearInterval(interval);
     }
   }, [autoRefresh, selectedClass, selectedDate]);
 
   const loadInitialData = async () => {
     try {
-      const [classesData, usersData] = await Promise.all([
+      const [classesData, usersData, instancesData] = await Promise.all([
         classesApi.list(),
         usersApi.list(),
+        classInstancesApi.list({
+          start_date: format(currentWeekStart, 'yyyy-MM-dd'),
+          end_date: format(currentWeekEnd, 'yyyy-MM-dd'),
+        }),
       ]);
       setClasses(classesData);
       setUsers(usersData);
+      setClassInstances(instancesData);
       if (classesData.length > 0) {
         setSelectedClass(classesData[0].id);
       }
@@ -91,10 +143,12 @@ export default function TeacherPage() {
     }
   };
 
-  const loadAttendance = async () => {
-    if (!selectedClass) return;
+  const loadAttendance = async (classId?: number, date?: string) => {
+    const targetClassId = classId ?? selectedClass;
+    const targetDate = date ?? selectedDate;
+    if (!targetClassId) return;
     try {
-      const data = await attendanceApi.getByClass(selectedClass, selectedDate);
+      const data = await attendanceApi.getByClass(targetClassId, targetDate);
       setAttendance(data);
     } catch (error) {
       console.error('Error loading attendance:', error);
@@ -105,7 +159,7 @@ export default function TeacherPage() {
     setIsProcessing(true);
     try {
       await attendanceApi.confirm(id);
-      loadAttendance();
+      loadAttendance(selectedClass as number, selectedDate);
     } catch (error) {
       console.error('Error confirming:', error);
     } finally {
@@ -117,7 +171,7 @@ export default function TeacherPage() {
     setIsProcessing(true);
     try {
       await attendanceApi.cancel(id);
-      loadAttendance();
+      loadAttendance(selectedClass as number, selectedDate);
     } catch (error) {
       console.error('Error removing:', error);
     } finally {
@@ -131,7 +185,7 @@ export default function TeacherPage() {
     try {
       await attendanceApi.bulkConfirm(selectedStudents);
       setSelectedStudents([]);
-      loadAttendance();
+      loadAttendance(selectedClass as number, selectedDate);
     } catch (error) {
       console.error('Error bulk confirming:', error);
     } finally {
@@ -148,7 +202,7 @@ export default function TeacherPage() {
         await attendanceApi.cancel(id);
       }
       setSelectedStudents([]);
-      loadAttendance();
+      loadAttendance(selectedClass as number, selectedDate);
     } catch (error) {
       console.error('Error bulk removing:', error);
     } finally {
@@ -163,7 +217,7 @@ export default function TeacherPage() {
     setIsProcessing(true);
     try {
       await attendanceApi.bulkConfirm(pending);
-      loadAttendance();
+      loadAttendance(selectedClass as number, selectedDate);
     } catch (error) {
       console.error('Error confirming all:', error);
     } finally {
@@ -181,8 +235,13 @@ export default function TeacherPage() {
     if (!selectedClass) return;
     setIsProcessing(true);
     try {
-      await attendanceApi.direct(studentUuid, selectedClass, undefined, user?.user_uuid);
-      loadAttendance();
+      await attendanceApi.direct(
+        studentUuid,
+        selectedClass as number,
+        selectedClassInstance?.id,
+        user?.user_uuid
+      );
+      loadAttendance(selectedClass as number, selectedDate);
     } catch (error) {
       console.error('Error adding student:', error);
     } finally {
@@ -331,143 +390,185 @@ export default function TeacherPage() {
       </div>
 
       {activeTab === 'attendance' && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Confirm Attendance</CardTitle>
-              <div className="flex gap-4">
-                <Input
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="w-auto"
-                />
-                <select
-                  className="border rounded-md px-3 py-2"
-                  value={selectedClass}
-                  onChange={(e) => setSelectedClass(Number(e.target.value))}
-                >
-                  {classes.map((cls) => (
-                    <option key={cls.id} value={cls.id}>{cls.class_name}</option>
-                  ))}
-                </select>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={autoRefresh}
-                    onChange={(e) => setAutoRefresh(e.target.checked)}
-                  />
-                  Auto-refresh (5s)
-                </label>
-                <Button variant="outline" size="sm" onClick={loadAttendance}>
-                  🔄 Refresh
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-3 gap-4 mb-6">
-              <div className="text-center p-4 bg-slate-100 dark:bg-slate-800 rounded-lg">
-                <p className="text-2xl font-bold text-slate-900 dark:text-white">{attendance.length}</p>
-                <p className="text-slate-500 dark:text-slate-400">Total Students</p>
-              </div>
-              <div className="text-center p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
-                <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{pendingCount}</p>
-                <p className="text-yellow-600 dark:text-yellow-400">⏳ Pending</p>
-              </div>
-              <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                <p className="text-2xl font-bold text-green-600 dark:text-green-400">{confirmedCount}</p>
-                <p className="text-green-600 dark:text-green-400">✅ Confirmed</p>
-              </div>
-            </div>
-
-            <div className="space-y-2 mb-4">
-              {attendance.map((att) => (
-                <div
-                  key={att.id}
-                  className="flex items-center justify-between p-3 bg-slate-100 dark:bg-slate-800 rounded-lg"
-                >
-                  <div className="flex items-center gap-3">
-                    {att.status === 'pending' && (
-                      <input
-                        type="checkbox"
-                        checked={selectedStudents.includes(att.id)}
-                        onChange={() => toggleStudent(att.id)}
-                      />
-                    )}
-                    <Avatar
-                      src={att.user?.profile_image_url}
-                      firstName={att.user?.first_name}
-                      lastName={att.user?.last_name}
+        <div className="space-y-4">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Weekly Schedule</CardTitle>
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={autoRefresh}
+                      onChange={(e) => setAutoRefresh(e.target.checked)}
+                      className="rounded"
                     />
-                    <div>
-                      <p className="font-medium text-slate-900 dark:text-white">
-                        {att.user?.first_name} {att.user?.last_name}
-                      </p>
-                      <p className="text-sm text-slate-500 dark:text-slate-400">
-                        Checked in: {new Date(att.created_at).toLocaleTimeString()}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={att.status === 'confirmed' ? 'text-green-600 dark:text-green-400' : 'text-yellow-600 dark:text-yellow-400'}>
-                      {att.status === 'confirmed' ? '✅ Confirmed' : '⏳ Pending'}
-                    </span>
-                    {att.status === 'pending' && (
-                      <>
-                        <Button size="sm" onClick={() => handleConfirm(att.id)} disabled={isProcessing}>
-                          ✓ Confirm
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => handleRemove(att.id)} disabled={isProcessing}>
-                          ✕ Remove
-                        </Button>
-                      </>
-                    )}
-                  </div>
+                    Auto-refresh (5s)
+                  </label>
                 </div>
-              ))}
-            </div>
-
-            {selectedStudents.length > 0 && (
-              <div className="flex gap-2 mb-4">
-                <Button onClick={handleBulkConfirm} disabled={isProcessing}>
-                  ✅ Confirm Selected ({selectedStudents.length})
-                </Button>
-                <Button variant="outline" onClick={handleBulkRemove} disabled={isProcessing}>
-                  🗑️ Remove Selected ({selectedStudents.length})
-                </Button>
               </div>
-            )}
+            </CardHeader>
+            <CardContent className="p-4">
+              <Calendar
+                classInstances={classInstances}
+                classSchedules={classes}
+                selectedInstance={selectedClassInstance}
+                onSelectInstance={setSelectedClassInstance}
+                attendanceCounts={attendanceCounts}
+              />
+              <p className="mt-3 text-sm text-slate-500 dark:text-slate-400 flex items-center gap-2">
+                <CalendarIcon className="w-4 h-4" />
+                Click on a class to view and confirm attendance
+              </p>
+            </CardContent>
+          </Card>
 
-            {pendingCount > 0 && (
-              <Button onClick={handleConfirmAllPending} disabled={isProcessing} className="w-full">
-                ✅ CONFIRM ALL PENDING ({pendingCount})
-              </Button>
-            )}
-
-            <div className="mt-4 border-t pt-4">
-              <details>
-                <summary className="cursor-pointer font-medium">+ Add Student Manually</summary>
-                <div className="mt-2 p-3 bg-slate-50 rounded-lg">
-                  <select
-                    className="w-full border rounded-md p-2"
-                    onChange={(e) => {
-                      if (e.target.value) handleAddStudent(e.target.value);
-                    }}
-                    defaultValue=""
+          {selectedClassInstance && (
+            <Card className="border-blue-200 dark:border-blue-800">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>
+                      {selectedClassInstance.class_schedule?.class_name || 'Class'} - Attendance
+                    </CardTitle>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                      {format(parseISO(selectedClassInstance.class_date), 'EEEE, MMMM d, yyyy')}
+                      {selectedClassInstance.class_schedule?.time && ` at ${selectedClassInstance.class_schedule.time}`}
+                      {isClassInstanceInPast(selectedClassInstance) && (
+                        <span className="ml-2 px-2 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 rounded text-xs">
+                          Past Class - Locked
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelectedClassInstance(null)}
                   >
-                    <option value="">Select a student...</option>
-                    {users.map((u) => (
-                      <option key={u.user_uuid} value={u.user_uuid}>
-                        {u.first_name} {u.last_name}
-                      </option>
-                    ))}
-                  </select>
+                    <X className="w-4 h-4" />
+                  </Button>
                 </div>
-              </details>
-            </div>
-          </CardContent>
-        </Card>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-3 gap-4 mb-6">
+                  <div className="text-center p-4 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{attendance.length}</p>
+                    <p className="text-slate-500 dark:text-slate-400">Total Students</p>
+                  </div>
+                  <div className="text-center p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+                    <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{pendingCount}</p>
+                    <p className="text-yellow-600 dark:text-yellow-400">⏳ Pending</p>
+                  </div>
+                  <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                    <p className="text-2xl font-bold text-green-600 dark:text-green-400">{confirmedCount}</p>
+                    <p className="text-green-600 dark:text-green-400">✅ Confirmed</p>
+                  </div>
+                </div>
+
+                {attendance.length === 0 ? (
+                  <div className="text-center py-8 text-slate-500 dark:text-slate-400">
+                    <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                    <p>No students have checked in yet for this class.</p>
+                    <p className="text-sm mt-1">Students can check in using the kiosk.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 mb-4">
+                    {attendance.map((att) => (
+                      <div
+                        key={att.id}
+                        className="flex items-center justify-between p-3 bg-slate-100 dark:bg-slate-800 rounded-lg"
+                      >
+                        <div className="flex items-center gap-3">
+                          {att.status === 'pending' && (
+                            <input
+                              type="checkbox"
+                              checked={selectedStudents.includes(att.id)}
+                              onChange={() => toggleStudent(att.id)}
+                              className="rounded"
+                            />
+                          )}
+                          <Avatar
+                            src={att.user?.profile_image_url}
+                            firstName={att.user?.first_name}
+                            lastName={att.user?.last_name}
+                          />
+                          <div>
+                            <p className="font-medium text-slate-900 dark:text-white">
+                              {att.user?.first_name} {att.user?.last_name}
+                            </p>
+                            <p className="text-sm text-slate-500 dark:text-slate-400">
+                              Checked in: {new Date(att.created_at).toLocaleTimeString()}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={att.status === 'confirmed' ? 'text-green-600 dark:text-green-400' : 'text-yellow-600 dark:text-yellow-400'}>
+                            {att.status === 'confirmed' ? '✅ Confirmed' : '⏳ Pending'}
+                          </span>
+                          {att.status === 'pending' && !isClassInstanceInPast(selectedClassInstance) && (
+                            <>
+                              <Button size="sm" onClick={() => handleConfirm(att.id)} disabled={isProcessing}>
+                                ✓ Confirm
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={() => handleRemove(att.id)} disabled={isProcessing}>
+                                ✕ Remove
+                              </Button>
+                            </>
+                          )}
+                          {att.status === 'pending' && isClassInstanceInPast(selectedClassInstance) && (
+                            <span className="text-xs text-slate-400 dark:text-slate-500">
+                              Locked
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {selectedStudents.length > 0 && !isClassInstanceInPast(selectedClassInstance) && (
+                  <div className="flex gap-2 mb-4">
+                    <Button onClick={handleBulkConfirm} disabled={isProcessing}>
+                      ✅ Confirm Selected ({selectedStudents.length})
+                    </Button>
+                    <Button variant="outline" onClick={handleBulkRemove} disabled={isProcessing}>
+                      🗑️ Remove Selected ({selectedStudents.length})
+                    </Button>
+                  </div>
+                )}
+
+                {pendingCount > 0 && !isClassInstanceInPast(selectedClassInstance) && (
+                  <Button onClick={handleConfirmAllPending} disabled={isProcessing} className="w-full">
+                    ✅ CONFIRM ALL PENDING ({pendingCount})
+                  </Button>
+                )}
+
+                <div className="mt-4 border-t pt-4">
+                  <details open={!isClassInstanceInPast(selectedClassInstance)}>
+                    <summary className="cursor-pointer font-medium">+ Add Student Manually</summary>
+                    <div className="mt-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+                      <select
+                        className="w-full border rounded-md p-2 bg-white dark:bg-slate-800"
+                        onChange={(e) => {
+                          if (e.target.value) handleAddStudent(e.target.value);
+                        }}
+                        defaultValue=""
+                      >
+                        <option value="">Select a student...</option>
+                        {users.map((u) => (
+                          <option key={u.user_uuid} value={u.user_uuid}>
+                            {u.first_name} {u.last_name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </details>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       )}
 
       {activeTab === 'roster' && (
