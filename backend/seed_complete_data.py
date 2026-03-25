@@ -43,6 +43,7 @@ def seed_data():
             {"name": "Student", "description": "Regular student member"},
             {"name": "Teacher", "description": "Instructor who teaches classes"},
             {"name": "Admin", "description": "Administrator with full access"},
+            {"name": "Tablet", "description": "Tablet-only user for check-in kiosk"},
         ]
         for role_data in roles_data:
             existing = db.query(Role).filter(Role.name == role_data["name"]).first()
@@ -53,6 +54,7 @@ def seed_data():
         student_role = db.query(Role).filter(Role.name == "Student").first()
         teacher_role = db.query(Role).filter(Role.name == "Teacher").first()
         admin_role = db.query(Role).filter(Role.name == "Admin").first()
+        tablet_role = db.query(Role).filter(Role.name == "Tablet").first()
 
         print("Seeding gym locations...")
         gyms_data = [
@@ -280,6 +282,14 @@ def seed_data():
                 "rank": "Black",
                 "password": "admin123",
                 "roles": [admin_role, teacher_role],
+            },
+            {
+                "first_name": "Tablet",
+                "last_name": "Kiosk",
+                "email": "tablet@example.com",
+                "rank": "White",
+                "password": "tablet123",
+                "roles": [tablet_role],
             },
             {
                 "first_name": "David",
@@ -539,6 +549,7 @@ def seed_data():
         print("  Teacher: mike@example.com / password123")
         print("  Teacher: sarah@example.com / password123")
         print("  Admin: admin@example.com / admin123")
+        print("  Tablet: tablet@example.com / tablet123")
         print("\nKiosk PIN: 1234")
         print("\nDatabase stats:")
         print(f"  Users: {db.query(User).count()}")

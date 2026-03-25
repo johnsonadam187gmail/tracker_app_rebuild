@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
 import type { User, Role } from '@/types';
 
 interface AuthContextType {
@@ -10,6 +11,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isTeacher: boolean;
   isAdmin: boolean;
+  isTablet: boolean;
   login: (email: string, password: string, isTeacherLogin?: boolean) => Promise<void>;
   logout: () => Promise<void>;
   logoutAll: () => Promise<void>;
@@ -20,6 +22,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -27,6 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const isTeacher = roles.some(r => r.name === 'Teacher');
   const isAdmin = roles.some(r => r.name === 'Admin');
+  const isTablet = roles.some(r => r.name === 'Tablet');
   const isAuthenticated = Boolean(user);
 
   const logout = async () => {
@@ -42,6 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setRoles([]);
       setCsrfToken(null);
       localStorage.removeItem('csrf_token');
+      router.push('/');
     }
   };
 
@@ -58,6 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setRoles([]);
       setCsrfToken(null);
       localStorage.removeItem('csrf_token');
+      router.push('/');
     }
   };
 
@@ -147,6 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated,
         isTeacher,
         isAdmin,
+        isTablet,
         login,
         logout,
         logoutAll,

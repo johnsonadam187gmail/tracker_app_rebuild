@@ -30,7 +30,6 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { href: '/', label: 'Check In', icon: Home },
   { href: '/portal', label: 'Student Portal', icon: UserCog, requiresAuth: true },
   { href: '/teacher', label: 'Teacher', icon: GraduationCap, requiresTeacher: true },
   { href: '/admin', label: 'Admin', icon: Shield, requiresAdmin: true },
