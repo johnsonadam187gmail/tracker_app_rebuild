@@ -324,7 +324,7 @@ export default function CheckInPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
@@ -647,12 +647,12 @@ export default function CheckInPage() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>This Week&apos;s Classes</CardTitle>
+          <Card className="p-4 md:p-6">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg md:text-xl">This Week&apos;s Classes</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-7 gap-2">
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2 md:gap-3">
                 {DAYS_OF_WEEK.map((day) => {
                   const dayClasses = classes.filter(c => c.day?.toLowerCase() === day.toLowerCase()).sort((a, b) => (a.time || '').localeCompare(b.time || ''));
                   const isTodayDay = day === todayDayName;
@@ -661,7 +661,7 @@ export default function CheckInPage() {
                     <div 
                       key={day} 
                       className={`
-                        min-h-[200px] rounded-lg p-2 border
+                        min-h-[160px] md:min-h-[200px] rounded-lg p-2 md:p-3 border
                         ${isTodayDay 
                           ? 'bg-blue-500/10 border-blue-500/50' 
                           : 'bg-slate-700/30 border-slate-600/30'}
