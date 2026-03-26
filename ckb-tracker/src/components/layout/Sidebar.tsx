@@ -7,10 +7,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
 import { Avatar } from '@/components/ui/Avatar';
 import { 
-  Home, 
   UserCog, 
   GraduationCap, 
-  Settings, 
   LogOut,
   Menu,
   X,
@@ -35,16 +33,28 @@ const navItems: NavItem[] = [
   { href: '/admin', label: 'Admin', icon: Shield, requiresAdmin: true },
 ];
 
-export function Sidebar() {
+function SidebarContent({ 
+  isCollapsed, 
+  isAuthenticated, 
+  user, 
+  logout, 
+  theme, 
+  toggleTheme,
+  setIsCollapsed,
+  setIsMobileOpen
+}: { 
+  isCollapsed: boolean;
+  isAuthenticated: boolean;
+  user: any;
+  logout: () => void;
+  theme: 'light' | 'dark';
+  toggleTheme: () => void;
+  setIsCollapsed: (v: boolean) => void;
+  setIsMobileOpen: (v: boolean) => void;
+}) {
   const pathname = usePathname();
-  const { isAuthenticated, user, isTeacher, isAdmin, logout } = useAuth();
-  const { theme, toggleTheme } = useTheme();
-  const [isCollapsed, setIsCollapsed] = useState(false);
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
-
-  const filteredNavItems = navItems;
-
-  const SidebarContent = () => (
+  
+  return (
     <div className={cn(
       "flex flex-col h-full",
       isCollapsed ? "px-3" : "px-4"
@@ -94,7 +104,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 py-4 space-y-1">
-        {filteredNavItems.map((item) => {
+        {navItems.map((item) => {
           const isActive = pathname === item.href;
           const Icon = item.icon;
           
@@ -163,6 +173,13 @@ export function Sidebar() {
       </div>
     </div>
   );
+}
+
+export function Sidebar() {
+  const { isAuthenticated, user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   return (
     <>
@@ -184,7 +201,16 @@ export function Sidebar() {
         "hidden lg:flex flex-col fixed left-0 top-0 h-screen bg-slate-900/95 backdrop-blur-sm border-r border-slate-800 transition-all duration-300 z-40",
         isCollapsed ? "w-[72px]" : "w-[280px]"
       )}>
-        <SidebarContent />
+        <SidebarContent 
+          isCollapsed={isCollapsed}
+          isAuthenticated={isAuthenticated}
+          user={user}
+          logout={logout}
+          theme={theme}
+          toggleTheme={toggleTheme}
+          setIsCollapsed={setIsCollapsed}
+          setIsMobileOpen={setIsMobileOpen}
+        />
       </aside>
 
       <aside className={cn(
@@ -199,7 +225,16 @@ export function Sidebar() {
             <X className="w-5 h-5" />
           </button>
         </div>
-        <SidebarContent />
+        <SidebarContent 
+          isCollapsed={isCollapsed}
+          isAuthenticated={isAuthenticated}
+          user={user}
+          logout={logout}
+          theme={theme}
+          toggleTheme={toggleTheme}
+          setIsCollapsed={setIsCollapsed}
+          setIsMobileOpen={setIsMobileOpen}
+        />
       </aside>
     </>
   );

@@ -22,11 +22,11 @@ import { DAYS_OF_WEEK } from '@/lib/utils';
 
 export default function HomePage() {
   const router = useRouter();
-  const { user, isAuthenticated, roles, login } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading, roles, login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isFormLoading, setIsFormLoading] = useState(false);
   const [classes, setClasses] = useState<ClassSchedule[]>([]);
   const [news, setNews] = useState<News[]>([]);
   const [loginAttempted, setLoginAttempted] = useState(false);
@@ -37,22 +37,22 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    if (loginAttempted && user && roles.length > 0) {
+    if (!authLoading && loginAttempted && user && roles.length > 0) {
       router.push('/check-in');
       setLoginAttempted(false);
     }
-  }, [user, roles, loginAttempted, router]);
+  }, [authLoading, user, roles, loginAttempted, router]);
 
   useEffect(() => {
-    if (isAuthenticated && user && roles.length > 0) {
+    if (!authLoading && isAuthenticated && user && roles.length > 0) {
       router.push('/check-in');
     }
-  }, [isAuthenticated, user, roles, router]);
+  }, [authLoading, isAuthenticated, user, roles, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setIsLoading(true);
+    setIsFormLoading(true);
     setLoginAttempted(true);
 
     try {
@@ -62,7 +62,7 @@ export default function HomePage() {
       setError(message);
       setLoginAttempted(false);
     } finally {
-      setIsLoading(false);
+      setIsFormLoading(false);
     }
   };
 
@@ -190,7 +190,7 @@ export default function HomePage() {
                 <Button
                   type="submit"
                   className="w-full"
-                  isLoading={isLoading}
+                  isLoading={isFormLoading}
                 >
                   Sign In
                 </Button>

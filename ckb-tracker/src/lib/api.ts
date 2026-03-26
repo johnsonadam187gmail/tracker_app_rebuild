@@ -15,9 +15,10 @@ import type {
   Lesson,
   DashboardStats,
   FeedbackStats,
+  News,
 } from '@/types';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -307,6 +308,29 @@ export const kioskApi = {
   },
   updatePin: async (currentPin: string, newPin: string) => {
     const response = await api.put('/kiosk/update-pin', { current_pin: currentPin, new_pin: newPin });
+    return response.data;
+  },
+};
+
+export const newsApi = {
+  list: async (publishedOnly: boolean = true) => {
+    const response = await api.get<News[]>('/news/', { params: { published_only: publishedOnly } });
+    return response.data;
+  },
+  get: async (id: number) => {
+    const response = await api.get<News>(`/news/${id}`);
+    return response.data;
+  },
+  create: async (data: { title: string; content: string; is_published: boolean }) => {
+    const response = await api.post('/news/', data);
+    return response.data;
+  },
+  update: async (id: number, data: { title?: string; content?: string; is_published?: boolean }) => {
+    const response = await api.put<News>(`/news/${id}`, data);
+    return response.data;
+  },
+  delete: async (id: number) => {
+    const response = await api.delete(`/news/${id}`);
     return response.data;
   },
 };

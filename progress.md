@@ -5,7 +5,16 @@ Martial Arts Attendance Tracking System - A full-stack application for managing 
 
 ---
 
-## RECENT UPDATES (March 21, 2026)
+## RECENT UPDATES (March 25, 2026)
+
+### Tablet Login & Weekly Calendar View
+- ✅ Added Tablet role for kiosk/check-in access
+- ✅ Tablet users redirected to /check-in after login
+- ✅ Weekly calendar view on check-in page (7-day grid)
+- ✅ Today's column highlighted in blue
+- ✅ Check In/Cancel/Confirmed buttons per class card
+- ✅ All logged-in users redirect to /check-in after login
+- ✅ Logout redirects to home page
 
 ### JWT Authentication with HTTP-Only Cookies (SECURITY FIX)
 - ✅ Complete rewrite of authentication system
@@ -36,6 +45,9 @@ Martial Arts Attendance Tracking System - A full-stack application for managing 
 
 ### API Path Fix
 - ✅ Fixed termTargetsApi paths: `/term-targets/` → `/terms/term-targets/`
+
+### Bug Fixes
+- ✅ Fixed bcrypt compatibility issue (bcrypt>=4.0.0,<5.0.0)
 
 ### Dark Mode Implementation
 - ✅ Added ThemeProvider with localStorage persistence
@@ -253,6 +265,7 @@ Martial Arts Attendance Tracking System - A full-stack application for managing 
 - Teacher: mike@example.com / password123
 - Teacher: sarah@example.com / password123
 - Admin: admin@example.com / admin123
+- Tablet: tablet@example.com / tablet123 (redirects to /check-in)
 
 ### Can Now Test:
 - User creation - ✅ Ready
@@ -301,7 +314,7 @@ All features implemented - ✅ COMPLETE (~95%)
 
 ---
 
-*Generated: March 19, 2026 (Updated with seed data)*
+*Generated: March 25, 2026*
 
 ---
 
@@ -325,4 +338,4 @@ uv run uvicorn app.main:app --reload
 
 ---
 
-*Last Updated: March 21, 2026*
+*Last Updated: March 25, 2026*

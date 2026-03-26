@@ -239,3 +239,14 @@ class SessionToken(Base):
     token_type = Column(String)
     expires_at = Column(DateTime)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class News(Base):
+    __tablename__ = "news"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, nullable=False)
+    content = Column(Text, nullable=False)
+    is_published = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

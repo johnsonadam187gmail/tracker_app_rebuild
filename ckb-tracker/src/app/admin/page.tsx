@@ -24,10 +24,11 @@ import {
   dashboardApi,
   classInstancesApi,
   kioskApi,
+  newsApi,
 } from '@/lib/api';
 import { formatDate, DAYS_OF_WEEK } from '@/lib/utils';
-import { Camera, LogOut } from 'lucide-react';
-import type { User, ClassSchedule, Role, Term, TermTarget, Curriculum, Lesson, GymLocation, ClassType, Rank } from '@/types';
+import { Camera, LogOut, Newspaper } from 'lucide-react';
+import type { User, ClassSchedule, Role, Term, TermTarget, Curriculum, Lesson, GymLocation, ClassType, Rank, News } from '@/types';
 
 export default function AdminPage() {
   const { user, isAdmin, isAuthenticated, isLoading, login, logout } = useAuth();
@@ -101,6 +102,9 @@ export default function AdminPage() {
   const [performanceStats, setPerformanceStats] = useState<any>(null);
   const [selectedStudentAnalytics, setSelectedStudentAnalytics] = useState<User | null>(null);
   const [feedbackFilters, setFeedbackFilters] = useState({ startDate: '', endDate: '', classes: '', rating: 'all' });
+  const [newsItems, setNewsItems] = useState<News[]>([]);
+  const [newsForm, setNewsForm] = useState({ title: '', content: '', is_published: false });
+  const [editingNews, setEditingNews] = useState<News | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
@@ -130,6 +134,21 @@ export default function AdminPage() {
       loadFeedbackAnalytics();
     }
   }, [activeTab, feedbackFilters]);
+
+  useEffect(() => {
+    if (activeTab === 'news') {
+      loadNews();
+    }
+  }, [activeTab]);
+
+  const loadNews = async () => {
+    try {
+      const data = await newsApi.list(false);
+      setNewsItems(data);
+    } catch (error) {
+      console.error('Error loading news:', error);
+    }
+  };
 
   useEffect(() => {
     return () => {
@@ -560,6 +579,7 @@ export default function AdminPage() {
     { id: 'terms', label: 'Terms' },
     { id: 'targets', label: 'Targets' },
     { id: 'lessons', label: 'Lessons' },
+    { id: 'news', label: 'News' },
     { id: 'student-passwords', label: 'Student Passwords' },
     { id: 'analytics', label: 'Performance Analytics' },
     { id: 'feedback', label: 'Feedback Analytics' },
@@ -567,7 +587,7 @@ export default function AdminPage() {
     { id: 'database', label: 'Database' },
   ];
 
-  if (!isAuthenticated || !isAdmin) {
+  if (isLoading || !isAuthenticated || !isAdmin) {
     return (
       <>
         <div className="max-w-md mx-auto pt-20">
@@ -893,19 +913,36 @@ export default function AdminPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Class Schedule</CardTitle>
+              <CardTitle>Weekly Class Schedule</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
-                {classes.map((cls) => (
-                  <div key={cls.id} className="flex justify-between p-3 bg-slate-100 dark:bg-slate-800 rounded-lg">
-                    <div>
-                      <p className="font-medium text-slate-900 dark:text-white">{cls.class_name}</p>
-                      <p className="text-sm text-slate-500 dark:text-slate-400">{cls.day} {cls.time}</p>
+              <div className="grid grid-cols-7 gap-2">
+                {DAYS_OF_WEEK.map((day) => {
+                  const dayClasses = classes.filter(c => c.day === day).sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+                  return (
+                    <div key={day} className="min-h-[200px] border border-slate-200 dark:border-slate-700 rounded-lg p-2 bg-slate-50 dark:bg-slate-800/50">
+                      <div className="text-center font-semibold text-sm text-slate-700 dark:text-slate-300 mb-2 pb-2 border-b border-slate-200 dark:border-slate-700">
+                        {day}
+                      </div>
+                      <div className="space-y-2">
+                        {dayClasses.length > 0 ? (
+                          dayClasses.map((cls) => (
+                            <div
+                              key={cls.id}
+                              className="p-2 bg-white dark:bg-slate-700 rounded-lg border border-slate-200 dark:border-slate-600 shadow-sm"
+                            >
+                              <p className="font-medium text-xs text-slate-900 dark:text-white truncate">{cls.class_name}</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400">{cls.time}</p>
+                              <p className="text-xs font-medium text-blue-600 dark:text-blue-400">{cls.points} pts</p>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-xs text-slate-400 dark:text-slate-500 text-center py-4">No classes</p>
+                        )}
+                      </div>
                     </div>
-                    <p className="font-medium text-slate-900 dark:text-white">{cls.points} pts</p>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
@@ -1301,6 +1338,144 @@ export default function AdminPage() {
               </Card>
             </div>
           )}
+        </div>
+      )}
+
+      {activeTab === 'news' && (
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>News Management</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <Input
+                  label="Title"
+                  value={newsForm.title}
+                  onChange={(e) => setNewsForm({ ...newsForm, title: e.target.value })}
+                  placeholder="News title"
+                />
+                <div className="flex items-center gap-2 mt-6">
+                  <input
+                    type="checkbox"
+                    id="is_published"
+                    checked={newsForm.is_published}
+                    onChange={(e) => setNewsForm({ ...newsForm, is_published: e.target.checked })}
+                    className="w-4 h-4"
+                  />
+                  <label htmlFor="is_published" className="text-sm text-slate-700 dark:text-slate-300">
+                    Published
+                  </label>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                  Content
+                </label>
+                <textarea
+                  value={newsForm.content}
+                  onChange={(e) => setNewsForm({ ...newsForm, content: e.target.value })}
+                  placeholder="News content..."
+                  rows={4}
+                  className="flex w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:text-white"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  onClick={async () => {
+                    if (!newsForm.title || !newsForm.content) {
+                      alert('Please fill in title and content');
+                      return;
+                    }
+                    try {
+                      if (editingNews) {
+                        await newsApi.update(editingNews.id, newsForm);
+                      } else {
+                        await newsApi.create(newsForm);
+                      }
+                      setNewsForm({ title: '', content: '', is_published: false });
+                      setEditingNews(null);
+                      loadNews();
+                    } catch (error) {
+                      console.error('Error saving news:', error);
+                      alert('Failed to save news');
+                    }
+                  }}
+                >
+                  {editingNews ? 'Update' : 'Create'} News
+                </Button>
+                {editingNews && (
+                  <Button variant="outline" onClick={() => {
+                    setNewsForm({ title: '', content: '', is_published: false });
+                    setEditingNews(null);
+                  }}>
+                    Cancel
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Existing News</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {newsItems.map((news) => (
+                  <div key={news.id} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="font-medium text-slate-900 dark:text-white">{news.title}</h4>
+                          <span className={`px-2 py-0.5 text-xs rounded-full ${news.is_published ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-400'}`}>
+                            {news.is_published ? 'Published' : 'Draft'}
+                          </span>
+                        </div>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2">{news.content}</p>
+                        <p className="text-xs text-slate-400 mt-2">
+                          Created: {new Date(news.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div className="flex gap-2 ml-4">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setEditingNews(news);
+                            setNewsForm({ title: news.title, content: news.content, is_published: news.is_published });
+                          }}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-red-500 hover:text-red-600"
+                          onClick={async () => {
+                            if (confirm('Delete this news item?')) {
+                              try {
+                                await newsApi.delete(news.id);
+                                loadNews();
+                              } catch (error) {
+                                console.error('Error deleting news:', error);
+                                alert('Failed to delete news');
+                              }
+                            }
+                          }}
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {newsItems.length === 0 && (
+                  <p className="text-center text-slate-500 py-8">No news items yet</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
 

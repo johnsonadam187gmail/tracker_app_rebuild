@@ -131,7 +131,7 @@ export default function PortalPage() {
     }
   };
 
-  if (!isLoaded) {
+  if (authLoading) {
     return <div className="p-8 text-center">Loading...</div>;
   }
 

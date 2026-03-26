@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.database import engine
+from app.database import engine, SessionLocal
 from app import models
 from app.routers import (
     users,
@@ -18,6 +18,7 @@ from app.routers import (
     kiosk,
     database,
     dashboard,
+    news,
 )
 
 app = FastAPI(title="CKB Tracker API", version="1.0.0")
@@ -52,8 +53,26 @@ app.include_router(feedback.router, prefix="/feedback", tags=["Feedback"])
 app.include_router(kiosk.router, prefix="/kiosk", tags=["Kiosk"])
 app.include_router(database.router, prefix="/database", tags=["Database"])
 app.include_router(dashboard.router, prefix="/dashboard", tags=["Dashboard"])
+app.include_router(news.router, tags=["News"])
 
 
 @app.get("/")
 def read_root():
     return {"message": "CKB Tracker API is live!"}
+
+
+@app.on_event("startup")
+def create_default_roles():
+    db = SessionLocal()
+    try:
+        existing_tablet_role = (
+            db.query(models.Role).filter(models.Role.name == "Tablet").first()
+        )
+        if not existing_tablet_role:
+            tablet_role = models.Role(
+                name="Tablet", description="Tablet-only user for check-in kiosk"
+            )
+            db.add(tablet_role)
+            db.commit()
+    finally:
+        db.close()

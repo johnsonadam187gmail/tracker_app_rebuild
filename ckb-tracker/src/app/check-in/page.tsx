@@ -29,13 +29,13 @@ import {
 
 export default function CheckInPage() {
   const router = useRouter();
-  const { user, isAuthenticated, roles, logout } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading, roles, logout } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [classes, setClasses] = useState<ClassSchedule[]>([]);
   const [todayAttendance, setTodayAttendance] = useState<Attendance[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isFormLoading, setIsFormLoading] = useState(false);
   const [sessionTimeLeft, setSessionTimeLeft] = useState(120);
   const [showNewMemberForm, setShowNewMemberForm] = useState(false);
   const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
@@ -65,10 +65,10 @@ export default function CheckInPage() {
   const todayDayName = DAYS_OF_WEEK[today.getDay()];
 
   useEffect(() => {
-    if (!isAuthenticated || !isTablet) {
+    if (!authLoading && (!isAuthenticated || !isTablet)) {
       router.push('/login');
     }
-  }, [isAuthenticated, isTablet, router]);
+  }, [authLoading, isAuthenticated, isTablet, router]);
 
   useEffect(() => {
     classesApi.list().then(setClasses).catch(console.error);
@@ -136,7 +136,7 @@ export default function CheckInPage() {
 
   const handleCheckIn = async (classId: number) => {
     if (!selectedUser) return;
-    setIsLoading(true);
+    setIsFormLoading(true);
     try {
       await attendanceApi.checkIn(selectedUser.user_uuid, classId);
       const today = new Date().toISOString().split('T')[0];
@@ -145,12 +145,12 @@ export default function CheckInPage() {
     } catch (error) {
       console.error('Check-in error:', error);
     } finally {
-      setIsLoading(false);
+      setIsFormLoading(false);
     }
   };
 
   const handleCancelCheckIn = async (attendanceId: number) => {
-    setIsLoading(true);
+    setIsFormLoading(true);
     try {
       await attendanceApi.cancel(attendanceId);
       const today = new Date().toISOString().split('T')[0];
@@ -159,7 +159,7 @@ export default function CheckInPage() {
     } catch (error) {
       console.error('Cancel error:', error);
     } finally {
-      setIsLoading(false);
+      setIsFormLoading(false);
     }
   };
 
@@ -192,7 +192,7 @@ export default function CheckInPage() {
       alert('Passwords do not match');
       return;
     }
-    setIsLoading(true);
+    setIsFormLoading(true);
     try {
       const user = await usersApi.create({
         first_name: newMember.first_name,
@@ -219,7 +219,7 @@ export default function CheckInPage() {
       console.error('Create member error:', error);
       alert('Failed to create member');
     } finally {
-      setIsLoading(false);
+      setIsFormLoading(false);
     }
   };
 
@@ -288,7 +288,7 @@ export default function CheckInPage() {
   const handleDeletePhoto = async () => {
     if (!selectedUser) return;
     if (!confirm('Delete profile photo?')) return;
-    setIsLoading(true);
+    setIsFormLoading(true);
     try {
       await usersApi.deletePhoto(selectedUser.user_uuid);
       setSelectedUser({ ...selectedUser, profile_image_url: undefined });
@@ -296,7 +296,7 @@ export default function CheckInPage() {
       console.error('Delete photo error:', error);
       alert('Failed to delete photo');
     } finally {
-      setIsLoading(false);
+      setIsFormLoading(false);
     }
   };
 
@@ -319,7 +319,7 @@ export default function CheckInPage() {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  if (!isAuthenticated || !isTablet) {
+  if (authLoading || !isAuthenticated || !isTablet) {
     return null;
   }
 
@@ -525,8 +525,8 @@ export default function CheckInPage() {
                 <Button 
                   className="w-full mt-6" 
                   onClick={handleCreateMember} 
-                  disabled={isLoading}
-                  isLoading={isLoading}
+                  disabled={isFormLoading}
+                  isLoading={isFormLoading}
                 >
                   <Plus className="w-4 h-4 mr-2" />
                   Create Member
@@ -699,7 +699,7 @@ export default function CheckInPage() {
                                       size="sm"
                                       className="w-full text-xs"
                                       onClick={() => handleCheckIn(cls.id)} 
-                                      disabled={isLoading}
+                                      disabled={isFormLoading}
                                     >
                                       Check In
                                     </Button>

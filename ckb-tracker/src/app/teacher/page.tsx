@@ -13,7 +13,7 @@ import { LogOut } from 'lucide-react';
 import type { ClassSchedule, Attendance, User, ClassFeedback } from '@/types';
 
 export default function TeacherPage() {
-  const { user, isTeacher, isAdmin, logout, login } = useAuth();
+  const { user, isTeacher, isAdmin, isLoading, logout, login } = useAuth();
   const [activeTab, setActiveTab] = useState<'attendance' | 'roster' | 'feedback'>('attendance');
   const [classes, setClasses] = useState<ClassSchedule[]>([]);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
@@ -251,7 +251,7 @@ export default function TeacherPage() {
   const pendingCount = attendance.filter(a => a.status === 'pending').length;
   const confirmedCount = attendance.filter(a => a.status === 'confirmed').length;
 
-  if (!isLoaded) {
+  if (isLoading) {
     return <div className="p-8 text-center">Loading...</div>;
   }
 

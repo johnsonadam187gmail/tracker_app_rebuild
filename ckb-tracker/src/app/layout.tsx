@@ -3,7 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ThemeProvider } from "@/hooks/useTheme";
-import { Sidebar } from "@/components/layout/Sidebar";
+import { AppLayout } from "@/components/AppLayout";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
@@ -30,12 +30,9 @@ export default function RootLayout({
       <body className="min-h-screen bg-[var(--background)] text-[var(--foreground)] antialiased">
         <ThemeProvider>
           <AuthProvider>
-            <Sidebar />
-            <main className="lg:ml-[280px] min-h-screen transition-all duration-300">
-              <div className="p-6 lg:p-8 pt-16 lg:pt-8">
-                {children}
-              </div>
-            </main>
+            <AppLayout>
+              {children}
+            </AppLayout>
           </AuthProvider>
         </ThemeProvider>
       </body>

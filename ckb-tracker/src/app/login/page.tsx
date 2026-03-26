@@ -1,19 +1,34 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { authApi } from '@/lib/api';
+import { useAuth } from '@/hooks/useAuth';
 import { Shield, Lock, Mail, AlertCircle } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { user, isAuthenticated, isLoading: authLoading, roles } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!authLoading && isAuthenticated && user && roles.length > 0) {
+      const roleNames = roles.map((r: { name: string }) => r.name);
+      if (roleNames.includes('Admin')) {
+        router.push('/admin');
+      } else if (roleNames.includes('Teacher')) {
+        router.push('/teacher');
+      } else {
+        router.push('/portal');
+      }
+    }
+  }, [authLoading, isAuthenticated, user, roles, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

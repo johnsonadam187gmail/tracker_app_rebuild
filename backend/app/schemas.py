@@ -309,3 +309,28 @@ class FeedbackStats(BaseModel):
     positiveCount: int
     negativeCount: int
     positivePercent: float
+
+
+class NewsBase(BaseModel):
+    title: str
+    content: str
+    is_published: bool = False
+
+
+class NewsCreate(NewsBase):
+    pass
+
+
+class NewsUpdate(BaseModel):
+    title: Optional[str] = None
+    content: Optional[str] = None
+    is_published: Optional[bool] = None
+
+
+class NewsResponse(NewsBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True

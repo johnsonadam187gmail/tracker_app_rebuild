@@ -1,6 +1,8 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 import { useRouter } from 'next/navigation';
 import type { User, Role } from '@/types';
 
@@ -35,7 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
-      await fetch('http://localhost:8000/auth/logout', {
+      await fetch(`${API_BASE_URL}/auth/logout`, {
         method: 'POST',
         credentials: 'include',
       });
@@ -46,13 +48,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setRoles([]);
       setCsrfToken(null);
       localStorage.removeItem('csrf_token');
+      await new Promise(resolve => setTimeout(resolve, 50));
       router.push('/');
     }
   };
 
   const logoutAll = async () => {
     try {
-      await fetch('http://localhost:8000/auth/logout-all', {
+      await fetch('${API_BASE_URL}/auth/logout-all', {
         method: 'POST',
         credentials: 'include',
       });
@@ -63,6 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setRoles([]);
       setCsrfToken(null);
       localStorage.removeItem('csrf_token');
+      await new Promise(resolve => setTimeout(resolve, 50));
       router.push('/');
     }
   };
@@ -70,7 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshSession = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('http://localhost:8000/auth/me', {
+      const response = await fetch('${API_BASE_URL}/auth/me', {
         method: 'GET',
         credentials: 'include',
       });
@@ -84,7 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           localStorage.setItem('csrf_token', data.csrf_token);
         }
       } else {
-        const refreshResponse = await fetch('http://localhost:8000/auth/refresh', {
+        const refreshResponse = await fetch('${API_BASE_URL}/auth/refresh', {
           method: 'POST',
           credentials: 'include',
         });
@@ -117,7 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string, isTeacherLogin = false) => {
     const endpoint = isTeacherLogin ? '/auth/teacher-login' : '/auth/login';
 
-    const response = await fetch(`http://localhost:8000${endpoint}`, {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
