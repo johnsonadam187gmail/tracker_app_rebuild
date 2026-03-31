@@ -36,16 +36,44 @@ export default function HomePage() {
     newsApi.list(true).then(setNews).catch(console.error);
   }, []);
 
+  const isTeacher = roles.some(r => r.name === 'Teacher');
+  const isAdmin = roles.some(r => r.name === 'Admin');
+  const isTablet = roles.some(r => r.name === 'Tablet');
+
   useEffect(() => {
     if (!authLoading && loginAttempted && user && roles.length > 0) {
-      router.push('/check-in');
+      const isTeacher = roles.some(r => r.name === 'Teacher');
+      const isAdmin = roles.some(r => r.name === 'Admin');
+      const isTablet = roles.some(r => r.name === 'Tablet');
+
+      if (isTablet) {
+        router.push('/check-in');
+      } else if (isTeacher) {
+        router.push('/teacher');
+      } else if (isAdmin) {
+        router.push('/admin');
+      } else {
+        router.push('/portal');
+      }
       setLoginAttempted(false);
     }
   }, [authLoading, user, roles, loginAttempted, router]);
 
   useEffect(() => {
     if (!authLoading && isAuthenticated && user && roles.length > 0) {
-      router.push('/check-in');
+      const isTeacher = roles.some(r => r.name === 'Teacher');
+      const isAdmin = roles.some(r => r.name === 'Admin');
+      const isTablet = roles.some(r => r.name === 'Tablet');
+
+      if (isTablet) {
+        router.push('/check-in');
+      } else if (isTeacher) {
+        router.push('/teacher');
+      } else if (isAdmin) {
+        router.push('/admin');
+      } else {
+        router.push('/portal');
+      }
     }
   }, [authLoading, isAuthenticated, user, roles, router]);
 

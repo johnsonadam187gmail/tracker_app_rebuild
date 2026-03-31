@@ -60,15 +60,25 @@ export default function CheckInPage() {
   const isTablet = roles.some(r => r.name === 'Tablet');
   const isTeacher = roles.some(r => r.name === 'Teacher');
   const isAdmin = roles.some(r => r.name === 'Admin');
+  const isStudent = !isTablet && !isTeacher && !isAdmin;
 
   const today = new Date();
   const todayDayName = DAYS_OF_WEEK[today.getDay()];
 
   useEffect(() => {
-    if (!authLoading && (!isAuthenticated || !isTablet)) {
+    if (!authLoading && !isAuthenticated) {
       router.push('/login');
     }
-  }, [authLoading, isAuthenticated, isTablet, router]);
+  }, [authLoading, isAuthenticated, router]);
+
+  useEffect(() => {
+    if (!authLoading && isAuthenticated && isStudent) {
+      if (user) {
+        setSelectedUser(user);
+        setSessionTimeLeft(120);
+      }
+    }
+  }, [authLoading, isAuthenticated, isStudent, user]);
 
   useEffect(() => {
     classesApi.list().then(setClasses).catch(console.error);
@@ -113,13 +123,22 @@ export default function CheckInPage() {
         return;
       }
       try {
-        const results = await usersApi.search(query);
+        let results = await usersApi.search(query);
+        if (isStudent && user) {
+          const fullName = `${user.first_name} ${user.last_name}`.toLowerCase();
+          const searchLower = query.toLowerCase();
+          results = results.filter(r => 
+            r.user_uuid === user.user_uuid ||
+            fullName.includes(searchLower) ||
+            `${r.first_name} ${r.last_name}`.toLowerCase().includes(searchLower)
+          );
+        }
         setSearchResults(results);
       } catch (error) {
         console.error('Search error:', error);
       }
     }, 300),
-    []
+    [isStudent, user]
   );
 
   useEffect(() => {
@@ -319,7 +338,9 @@ export default function CheckInPage() {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  if (authLoading || !isAuthenticated || !isTablet) {
+  const canSearch = isTablet || isTeacher || isAdmin;
+
+  if (authLoading || !isAuthenticated) {
     return null;
   }
 
@@ -332,13 +353,15 @@ export default function CheckInPage() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-slate-900 dark:text-white">Check-In</h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400">Tablet Mode</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{isTablet ? 'Tablet Mode' : 'Check-In'}</p>
           </div>
         </div>
-        <Button variant="outline" size="sm" onClick={handleLogout}>
-          <LogOut className="w-4 h-4 mr-2" />
-          Logout
-        </Button>
+        {isTablet && (
+          <Button variant="outline" size="sm" onClick={handleLogout}>
+            <LogOut className="w-4 h-4 mr-2" />
+            Logout
+          </Button>
+        )}
       </div>
 
       {showCompleteConfirm && (
@@ -372,7 +395,7 @@ export default function CheckInPage() {
             <CardContent className="pt-6">
               <div className="text-center mb-6">
                 <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">
-                  Welcome to Check-In
+                  {isStudent ? 'Welcome' : 'Welcome to Check-In'}
                 </h1>
                 <p className="text-slate-500 dark:text-slate-400 flex items-center justify-center gap-2">
                   <Clock className="w-4 h-4" />
@@ -380,25 +403,27 @@ export default function CheckInPage() {
                 </p>
               </div>
 
-              <div className="relative">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-                  <Search className="w-5 h-5" />
+              {canSearch && (
+                <div className="relative">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                    <Search className="w-5 h-5" />
+                  </div>
+                  <Input
+                    placeholder="Search your name..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-12 h-12 text-base"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  )}
                 </div>
-                <Input
-                  placeholder="Search your name..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-12 h-12 text-base"
-                />
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                )}
-              </div>
+              )}
 
               {searchResults.length > 0 && (
                 <div className="mt-4 space-y-2">
@@ -435,7 +460,7 @@ export default function CheckInPage() {
                 </div>
               )}
 
-              {searchQuery.length >= 2 && searchResults.length === 0 && (
+              {canSearch && searchQuery.length >= 2 && searchResults.length === 0 && (
                 <div className="mt-4 text-center py-8">
                   <div className="w-12 h-12 mx-auto mb-3 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center">
                     <AlertCircle className="w-6 h-6 text-slate-400" />
@@ -449,14 +474,16 @@ export default function CheckInPage() {
             </CardContent>
           </Card>
 
-          <Button
-            variant="outline"
-            className="w-full h-12 text-base"
-            onClick={() => setShowNewMemberForm(!showNewMemberForm)}
-          >
-            <UserPlus className="w-5 h-5 mr-2" />
-            {showNewMemberForm ? 'Cancel' : 'Add New Member'}
-          </Button>
+          {canSearch && (
+            <Button
+              variant="outline"
+              className="w-full h-12 text-base"
+              onClick={() => setShowNewMemberForm(!showNewMemberForm)}
+            >
+              <UserPlus className="w-5 h-5 mr-2" />
+              {showNewMemberForm ? 'Cancel' : 'Add New Member'}
+            </Button>
+          )}
 
           {showNewMemberForm && (
             <Card className="animate-in">
@@ -562,7 +589,7 @@ export default function CheckInPage() {
                       {selectedUser.first_name} {selectedUser.last_name}
                     </h2>
                     {selectedUser.nicknames && (
-                      <p className="text-slate-500 dark:text-slate-400">"{selectedUser.nicknames}"</p>
+                      <p className="text-slate-500 dark:text-slate-400">&quot;{selectedUser.nicknames}&quot;</p>
                     )}
                     <div className="flex items-center gap-2 mt-2">
                       <RankBadge rank={selectedUser.rank} />

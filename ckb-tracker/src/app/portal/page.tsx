@@ -9,10 +9,10 @@ import { Badge, RankBadge } from '@/components/ui/Badge';
 import { Avatar } from '@/components/ui/Avatar';
 import { useAuth } from '@/hooks/useAuth';
 import { useChartColors } from '@/hooks/useChartColors';
-import { dashboardApi, feedbackApi, attendanceApi, usersApi } from '@/lib/api';
+import { dashboardApi, feedbackApi, attendanceApi, usersApi, termsApi, termTargetsApi } from '@/lib/api';
 import { formatDate, getDaysAgo } from '@/lib/utils';
-import type { DashboardStats, AttendanceTrend, ClassFeedback, Attendance, User } from '@/types';
-import { Bar } from 'react-chartjs-2';
+import type { DashboardStats, AttendanceTrend, ClassFeedback, Attendance, User, Term, TermTarget } from '@/types';
+import { Bar, Doughnut } from 'react-chartjs-2';
 import { LogOut } from 'lucide-react';
 import {
   Chart as ChartJS,
@@ -22,14 +22,15 @@ import {
   Title,
   Tooltip,
   Legend,
+  ArcElement,
 } from 'chart.js';
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement);
 
 export default function PortalPage() {
   const { user, logout, login, isLoading: authLoading } = useAuth();
   const router = useRouter();
-  const { colors, chartBaseOptions } = useChartColors();
+  const { colors, chartBaseOptions, isDark } = useChartColors();
   const [activeTab, setActiveTab] = useState<'analytics' | 'feedback'>('analytics');
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [attendanceTrend, setAttendanceTrend] = useState<AttendanceTrend[]>([]);
@@ -42,6 +43,10 @@ export default function PortalPage() {
   const [isLoaded, setIsLoaded] = useState(true);
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
   const [loginError, setLoginError] = useState('');
+  const [terms, setTerms] = useState<Term[]>([]);
+  const [targets, setTargets] = useState<TermTarget[]>([]);
+  const [currentTerm, setCurrentTerm] = useState<Term | null>(null);
+  const [userTarget, setUserTarget] = useState<TermTarget | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -79,16 +84,30 @@ export default function PortalPage() {
   const loadData = async () => {
     if (!user) return;
     try {
-      const [statsData, trendData, attendanceData, feedbackData] = await Promise.all([
+      const [statsData, trendData, attendanceData, feedbackData, termsData, targetsData] = await Promise.all([
         dashboardApi.getStats(user.user_uuid),
         dashboardApi.getAttendanceTrend(user.user_uuid, 90),
         attendanceApi.getByUser(user.user_uuid),
         feedbackApi.getByUser(user.user_uuid),
+        termsApi.list(),
+        termTargetsApi.list(),
       ]);
       setStats(statsData);
       setAttendanceTrend(trendData);
       setRecentAttendance(attendanceData.slice(0, 20));
       setFeedbackHistory(feedbackData);
+      setTerms(termsData);
+      setTargets(targetsData);
+
+      const today = new Date().toISOString().split('T')[0];
+      const activeTerm = termsData.find((t: Term) => t.start_date <= today && t.end_date >= today);
+      if (activeTerm) {
+        setCurrentTerm(activeTerm);
+        const targetForRank = targetsData.find((t: TermTarget) => t.term_id === activeTerm.id && t.rank === user.rank);
+        if (targetForRank) {
+          setUserTarget(targetForRank);
+        }
+      }
 
       const pending = attendanceData
         .filter(a => {
@@ -275,6 +294,50 @@ export default function PortalPage() {
             </Card>
           </div>
 
+          {userTarget && currentTerm && (
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle>Target Progress: {currentTerm.term_name}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-center gap-8">
+                  <div className="relative w-40 h-40">
+                    <Doughnut
+                      data={{
+                        labels: ['Completed', 'Remaining'],
+                        datasets: [{
+                          data: [stats?.totalPoints || 0, Math.max(0, userTarget.target - (stats?.totalPoints || 0))],
+                          backgroundColor: [colors.primaryBorder, isDark ? 'rgba(100, 116, 139, 0.3)' : 'rgba(203, 213, 225, 0.5)'],
+                          borderWidth: 0,
+                        }],
+                      }}
+                      options={{
+                        cutout: '70%',
+                        plugins: {
+                          legend: { display: false },
+                          tooltip: { enabled: false },
+                        },
+                      }}
+                    />
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <p className="text-2xl font-bold">{stats?.totalPoints || 0}</p>
+                      <p className="text-xs text-slate-500">/ {userTarget.target} pts</p>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-lg font-semibold">{userTarget.rank} Belt Target</p>
+                    <p className="text-sm text-slate-500">
+                      {currentTerm.start_date} - {currentTerm.end_date}
+                    </p>
+                    <p className="text-sm">
+                      {Math.round(((stats?.totalPoints || 0) / userTarget.target) * 100)}% complete
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <Card className="mb-6">
             <CardHeader>
               <CardTitle>Attendance Trend (Last 14 Days)</CardTitle>
@@ -284,41 +347,37 @@ export default function PortalPage() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Attendance History</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left py-2">Date</th>
-                      <th className="text-left py-2">Class</th>
-                      <th className="text-left py-2">Teacher</th>
-                      <th className="text-left py-2">Points</th>
-                      <th className="text-left py-2">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recentAttendance.map((att) => (
-                      <tr key={att.id} className="border-b">
-                        <td className="py-2">{formatDate(att.attendance_date)}</td>
-                        <td className="py-2">{att.class_schedule?.class_name || 'Class'}</td>
-                        <td className="py-2">{att.teacher_uuid ? teachers[att.teacher_uuid] || '-' : '-'}</td>
-                        <td className="py-2">{att.class_schedule?.points || 0}</td>
-                        <td className="py-2">
-                          <span className={att.status === 'confirmed' ? 'text-green-600' : 'text-yellow-600'}>
-                            {att.status === 'confirmed' ? '✅' : '⏳'} {att.status}
-                          </span>
-                        </td>
+            <Card>
+              <CardHeader>
+                <CardTitle>Recent Attendance History</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-2">Date</th>
+                        <th className="text-left py-2">Class</th>
+                        <th className="text-left py-2">Status</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
+                    </thead>
+                    <tbody>
+                      {recentAttendance.map((att) => (
+                        <tr key={att.id} className="border-b">
+                          <td className="py-2">{formatDate(att.attendance_date)}</td>
+                          <td className="py-2">{att.class_schedule?.class_name || 'Class'}</td>
+                          <td className="py-2">
+                            <span className={att.status === 'confirmed' ? 'text-green-600' : 'text-yellow-600'}>
+                              {att.status === 'confirmed' ? '✅' : '⏳'} {att.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
         </>
         )}
 

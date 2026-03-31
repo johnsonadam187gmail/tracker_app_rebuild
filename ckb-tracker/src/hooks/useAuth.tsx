@@ -36,9 +36,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isAuthenticated = Boolean(user);
 
   const logout = async () => {
+    const csrfToken = localStorage.getItem('csrf_token');
     try {
       await fetch(`${API_BASE_URL}/auth/logout`, {
         method: 'POST',
+        headers: csrfToken ? { 'X-CSRF-Token': csrfToken } : {},
         credentials: 'include',
       });
     } catch (error) {
@@ -54,9 +56,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logoutAll = async () => {
+    const csrfToken = localStorage.getItem('csrf_token');
     try {
-      await fetch('${API_BASE_URL}/auth/logout-all', {
+      await fetch(`${API_BASE_URL}/auth/logout-all`, {
         method: 'POST',
+        headers: csrfToken ? { 'X-CSRF-Token': csrfToken } : {},
         credentials: 'include',
       });
     } catch (error) {
