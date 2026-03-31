@@ -58,9 +58,9 @@ export default function CheckInPage() {
   });
 
   const isTablet = roles.some(r => r.name === 'Tablet');
-  const isTeacher = roles.some(r => r.name === 'Teacher');
   const isAdmin = roles.some(r => r.name === 'Admin');
-  const isStudent = !isTablet && !isTeacher && !isAdmin;
+  const isStudent = !isTablet && !isAdmin;
+  const isTeacher = roles.some(r => r.name === 'Teacher');
 
   const today = new Date();
   const todayDayName = DAYS_OF_WEEK[today.getDay()];
@@ -72,13 +72,17 @@ export default function CheckInPage() {
   }, [authLoading, isAuthenticated, router]);
 
   useEffect(() => {
-    if (!authLoading && isAuthenticated && isStudent) {
-      if (user) {
+    if (!authLoading && isAuthenticated) {
+      if (isTeacher) {
+        router.push('/teacher');
+        return;
+      }
+      if (isStudent && user) {
         setSelectedUser(user);
         setSessionTimeLeft(120);
       }
     }
-  }, [authLoading, isAuthenticated, isStudent, user]);
+  }, [authLoading, isAuthenticated, isStudent, isTeacher, user, router]);
 
   useEffect(() => {
     classesApi.list().then(setClasses).catch(console.error);
@@ -124,7 +128,7 @@ export default function CheckInPage() {
       }
       try {
         let results = await usersApi.search(query);
-        if (isStudent && user) {
+        if (!isTablet && !isAdmin && user) {
           const fullName = `${user.first_name} ${user.last_name}`.toLowerCase();
           const searchLower = query.toLowerCase();
           results = results.filter(r => 
@@ -138,7 +142,7 @@ export default function CheckInPage() {
         console.error('Search error:', error);
       }
     }, 300),
-    [isStudent, user]
+    [isTablet, isAdmin, user]
   );
 
   useEffect(() => {

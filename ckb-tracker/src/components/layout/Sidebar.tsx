@@ -14,7 +14,8 @@ import {
   X,
   Shield,
   Sun,
-  Moon
+  Moon,
+  CheckCircle
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -25,9 +26,11 @@ interface NavItem {
   requiresAuth?: boolean;
   requiresTeacher?: boolean;
   requiresAdmin?: boolean;
+  requiresTablet?: boolean;
 }
 
 const navItems: NavItem[] = [
+  { href: '/check-in', label: 'Check In', icon: CheckCircle, requiresAuth: true },
   { href: '/portal', label: 'Student Portal', icon: UserCog, requiresAuth: true },
   { href: '/teacher', label: 'Teacher', icon: GraduationCap, requiresTeacher: true },
   { href: '/admin', label: 'Admin', icon: Shield, requiresAdmin: true },
@@ -41,7 +44,8 @@ function SidebarContent({
   theme, 
   toggleTheme,
   setIsCollapsed,
-  setIsMobileOpen
+  setIsMobileOpen,
+  roles
 }: { 
   isCollapsed: boolean;
   isAuthenticated: boolean;
@@ -51,8 +55,18 @@ function SidebarContent({
   toggleTheme: () => void;
   setIsCollapsed: (v: boolean) => void;
   setIsMobileOpen: (v: boolean) => void;
+  roles?: string[];
 }) {
   const pathname = usePathname();
+  const isTablet = roles?.some((r: string) => r === 'Tablet');
+
+  const shouldShowItem = (item: NavItem) => {
+    if (item.requiresTablet && !isTablet) return false;
+    if (item.requiresTeacher && !roles?.some((r: string) => r === 'Teacher')) return false;
+    if (item.requiresAdmin && !roles?.some((r: string) => r === 'Admin')) return false;
+    if (item.requiresAuth && !isAuthenticated) return false;
+    return true;
+  };
   
   return (
     <div className={cn(
@@ -104,7 +118,7 @@ function SidebarContent({
       </div>
 
       <nav className="flex-1 py-4 space-y-1">
-        {navItems.map((item) => {
+        {navItems.filter(shouldShowItem).map((item) => {
           const isActive = pathname === item.href;
           const Icon = item.icon;
           
@@ -176,7 +190,7 @@ function SidebarContent({
 }
 
 export function Sidebar() {
-  const { isAuthenticated, user, logout } = useAuth();
+  const { isAuthenticated, user, logout, roles } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
@@ -210,6 +224,7 @@ export function Sidebar() {
           toggleTheme={toggleTheme}
           setIsCollapsed={setIsCollapsed}
           setIsMobileOpen={setIsMobileOpen}
+          roles={roles?.map(r => r.name)}
         />
       </aside>
 
@@ -234,6 +249,7 @@ export function Sidebar() {
           toggleTheme={toggleTheme}
           setIsCollapsed={setIsCollapsed}
           setIsMobileOpen={setIsMobileOpen}
+          roles={roles?.map(r => r.name)}
         />
       </aside>
     </>
