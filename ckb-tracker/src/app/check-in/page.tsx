@@ -59,7 +59,7 @@ export default function CheckInPage() {
 
   const isTablet = roles.some(r => r.name === 'Tablet');
   const isAdmin = roles.some(r => r.name === 'Admin');
-  const isStudent = !isTablet && !isAdmin;
+  const isStudent = !isTablet && !isAdmin && roles.some(r => r.name === 'Student');
   const isTeacher = roles.some(r => r.name === 'Teacher');
 
   const today = new Date();
@@ -72,17 +72,13 @@ export default function CheckInPage() {
   }, [authLoading, isAuthenticated, router]);
 
   useEffect(() => {
-    if (!authLoading && isAuthenticated) {
-      if (isTeacher) {
-        router.push('/teacher');
-        return;
-      }
-      if (isStudent && user) {
+    if (!authLoading && isAuthenticated && user) {
+      if (isStudent || isTeacher) {
         setSelectedUser(user);
         setSessionTimeLeft(120);
       }
     }
-  }, [authLoading, isAuthenticated, isStudent, isTeacher, user, router]);
+  }, [authLoading, isAuthenticated, isStudent, isTeacher, user]);
 
   useEffect(() => {
     classesApi.list().then(setClasses).catch(console.error);
@@ -342,7 +338,7 @@ export default function CheckInPage() {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  const canSearch = isTablet || isTeacher || isAdmin;
+  const canSearch = isTablet || isAdmin;
 
   if (authLoading || !isAuthenticated) {
     return null;

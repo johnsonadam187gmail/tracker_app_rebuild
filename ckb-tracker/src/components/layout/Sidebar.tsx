@@ -61,6 +61,7 @@ function SidebarContent({
   const isTablet = roles?.some((r: string) => r === 'Tablet');
 
   const shouldShowItem = (item: NavItem) => {
+    const isTeacher = roles?.some((r: string) => r === 'Teacher');
     if (item.requiresTablet && !isTablet) return false;
     if (item.requiresTeacher && !roles?.some((r: string) => r === 'Teacher')) return false;
     if (item.requiresAdmin && !roles?.some((r: string) => r === 'Admin')) return false;
