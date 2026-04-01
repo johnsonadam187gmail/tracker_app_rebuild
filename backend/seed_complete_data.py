@@ -240,6 +240,7 @@ def seed_data():
         db.commit()
 
         print("Seeding users...")
+        placeholder_url = "/placeholder-avatar.svg"
         demo_users = [
             {
                 "first_name": "John",
@@ -248,6 +249,7 @@ def seed_data():
                 "rank": "Blue",
                 "password": "password123",
                 "nicknames": "J-Smitty",
+                "profile_image_url": placeholder_url,
                 "roles": [student_role],
             },
             {
@@ -257,6 +259,7 @@ def seed_data():
                 "rank": "Purple",
                 "password": "password123",
                 "nicknames": "JD",
+                "profile_image_url": placeholder_url,
                 "roles": [student_role],
             },
             {
@@ -265,6 +268,7 @@ def seed_data():
                 "email": "mike@example.com",
                 "rank": "Black",
                 "password": "password123",
+                "profile_image_url": placeholder_url,
                 "roles": [teacher_role],
             },
             {
@@ -273,6 +277,7 @@ def seed_data():
                 "email": "sarah@example.com",
                 "rank": "Brown",
                 "password": "password123",
+                "profile_image_url": placeholder_url,
                 "roles": [teacher_role],
             },
             {
@@ -281,6 +286,7 @@ def seed_data():
                 "email": "admin@example.com",
                 "rank": "Black",
                 "password": "admin123",
+                "profile_image_url": placeholder_url,
                 "roles": [admin_role, teacher_role],
             },
             {
@@ -289,6 +295,7 @@ def seed_data():
                 "email": "tablet@example.com",
                 "rank": "White",
                 "password": "tablet123",
+                "profile_image_url": placeholder_url,
                 "roles": [tablet_role],
             },
             {
@@ -297,6 +304,7 @@ def seed_data():
                 "email": "david@example.com",
                 "rank": "White",
                 "password": "password123",
+                "profile_image_url": placeholder_url,
                 "roles": [student_role],
             },
             {
@@ -305,6 +313,7 @@ def seed_data():
                 "email": "emily@example.com",
                 "rank": "Blue",
                 "password": "password123",
+                "profile_image_url": placeholder_url,
                 "roles": [student_role],
             },
             {
@@ -313,6 +322,7 @@ def seed_data():
                 "email": "chris@example.com",
                 "rank": "Purple",
                 "password": "password123",
+                "profile_image_url": placeholder_url,
                 "roles": [student_role],
             },
             {
@@ -321,6 +331,7 @@ def seed_data():
                 "email": "lisa@example.com",
                 "rank": "Blue",
                 "password": "password123",
+                "profile_image_url": placeholder_url,
                 "roles": [student_role],
             },
             {
@@ -329,6 +340,7 @@ def seed_data():
                 "email": "tom@example.com",
                 "rank": "White",
                 "password": "password123",
+                "profile_image_url": placeholder_url,
                 "roles": [student_role],
             },
         ]

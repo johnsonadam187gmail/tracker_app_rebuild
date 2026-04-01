@@ -5,248 +5,39 @@ Martial Arts Attendance Tracking System - A full-stack application for managing 
 
 ---
 
-## RECENT UPDATES (March 25, 2026)
+## RECENT UPDATES (April 1, 2026)
 
-### Tablet Login & Weekly Calendar View
-- ✅ Added Tablet role for kiosk/check-in access
-- ✅ Tablet users redirected to /check-in after login
-- ✅ Weekly calendar view on check-in page (7-day grid)
-- ✅ Today's column highlighted in blue
-- ✅ Check In/Cancel/Confirmed buttons per class card
-- ✅ All logged-in users redirect to /check-in after login
-- ✅ Logout redirects to home page
+### ID Photo Implementation
+- ✅ Added ID photo display to all name displays (check-in, teacher, admin dashboards)
+- ✅ Created Facebook-style placeholder SVG (`/public/placeholder-avatar.svg`)
+- ✅ Updated seed data with placeholder URLs for all demo users
+- ✅ Avatar component shows placeholder image when profile_image_url is set
 
-### JWT Authentication with HTTP-Only Cookies (SECURITY FIX)
-- ✅ Complete rewrite of authentication system
-- ✅ Replaced localStorage tokens with HTTP-Only cookies (XSS protection)
-- ✅ New auth endpoints:
-  - `POST /auth/login` - Student login (sets httpOnly cookies)
-  - `POST /auth/teacher-login` - Teacher login (sets httpOnly cookies)
-  - `GET /auth/me` - Get current user (requires valid access cookie)
-  - `POST /auth/refresh` - Refresh access token (uses refresh cookie)
-  - `POST /auth/logout` - Clear session cookies
-  - `POST /auth/logout-all` - Clear all user sessions
-  - `GET /auth/csrf-token` - Get CSRF token
-- ✅ CSRF protection with double-submit cookie pattern
-- ✅ Token expiration: 10 minutes access, 7 days refresh
-- ✅ Multi-device support with independent sessions
-- ✅ SessionToken model for server-side token tracking/revocation
+### Tablet/Teacher Login Fix
+- ✅ Fixed tablet login after student logout (CSRF token on logout)
+- ✅ Fixed teacher login after other user logout
+- ✅ Root cause: Multiple stale backend processes in development
 
-### Login Flow Fixes
-- ✅ Admin login now uses proper auth (email/password via API)
-- ✅ Portal login uses proper auth
-- ✅ Teacher login uses proper auth
-- ✅ All login forms check `isAuthenticated` from useAuth hook
+### Role-Based Login Redirects
+- ✅ Tablet users → `/check-in`
+- ✅ Teacher users → `/teacher`
+- ✅ Admin users → `/admin`
+- ✅ Student users → `/portal`
 
-### Logout Buttons Added
-- ✅ Student Portal - Logout button in header
-- ✅ Teacher Dashboard - Logout button in header
-- ✅ Admin Settings - Logout button in header
+### Check-In Page Access Control
+- ✅ **Tablet role**: Full access - search any user, add new members
+- ✅ **Student role**: Pre-selected own profile, no search capability
+- ✅ **Teacher role**: Pre-selected own profile, no search capability, can access via sidebar but limited to own check-in
+- ✅ **Admin role**: Full access - search any user, add new members
 
-### API Path Fix
-- ✅ Fixed termTargetsApi paths: `/term-targets/` → `/terms/term-targets/`
+### Student Portal Analytics Updates
+- ✅ Removed "Points" column from Recent Attendance History table
+- ✅ Added gauge visualization for target progress vs. term targets
+- ✅ Shows current term target based on user's rank
 
-### Bug Fixes
-- ✅ Fixed bcrypt compatibility issue (bcrypt>=4.0.0,<5.0.0)
-
-### Dark Mode Implementation
-- ✅ Added ThemeProvider with localStorage persistence
-- ✅ Added theme toggle button to sidebar (Sun/Moon icon)
-- ✅ Dark mode CSS variables defined in globals.css
-- ✅ All UI components updated for dark mode:
-  - Card, Button, Input, Select, Badge, Avatar
-  - Tables, forms, stats cards
-  - Sidebar navigation
-- ✅ Chart colors updated to adapt to theme (useChartColors hook)
-- ✅ All pages now support dark/light mode:
-  - Home/Check-in page
-  - Student Portal page
-  - Teacher Dashboard page
-  - Admin/Settings page
-- ✅ Theme preference persists across browser sessions
-
-### Sidebar Navigation Update
-- ✅ All sidebar links visible to everyone (no auth filtering)
-- ✅ Users prompted for authentication when accessing protected pages
-- ✅ Links: Check In, Student Portal, Teacher, Admin
-
----
-
-## FRONTEND ASSESSMENT (Based on rebuild.md Specification)
-
-### 1. Attendance Page (`/`)
-
-**REQUIRED SIDEBAR (from spec):**
-- Theme toggle (dark/light) - ✅ DONE (in main content, not sidebar)
-- Profile photo capture/upload section - ❌ MISSING
-- Add New Member form (first name, last name, email, password, confirm password, nicknames, rank, last grading date, comments) - ✅ PRESENT (but in main content, not sidebar as spec says)
-
-**REQUIRED MAIN CONTENT - Before Login:**
-- Date display - ✅ DONE
-- User search box (minimum 2 characters) - ✅ DONE
-- Search results with profile photos, name, email, "Select" button - ✅ DONE
-
-**REQUIRED MAIN CONTENT - After Login (Dashboard):**
-- Student info header (photo, name, email) - ✅ DONE
-- Session timeout countdown (2 minutes) - ✅ DONE
-- Class list with check-in status:
-  - Not Checked In: "Check In" button - ✅ DONE
-  - Pending: "Pending" with "Cancel" button - ✅ DONE
-  - Confirmed: "Confirmed" (disabled) - ✅ DONE
-- "Complete - Done" button - ❌ MISSING
-- "Start Over - New Student" button (with confirmation) - ✅ DONE
-
-**Status: PARTIALLY COMPLETE** (~75%)
-
----
-
-### 2. Student Portal (`/portal`) - Named "Student Analytics Page" in spec
-
-**Login:** Redirects to login page - ✅ DONE
-
-**Required Layout:**
-- Welcome header with user name - ✅ DONE
-- Logout button in sidebar - ❌ MISSING (sidebar shows user but logout works)
-- Quick info (email, rank, nickname) - ✅ DONE
-
-**Tab 1: My Analytics (`My Analytics`)**
-- Metrics Row:
-  - Total Classes - ✅ DONE
-  - Total Points - ✅ DONE
-  - Classes This Month - ✅ DONE
-  - Last Class (days ago) - ✅ DONE
-- Charts:
-  - Attendance Trend (Last 90 Days) Bar chart - ✅ DONE (shows 14 days)
-- Data Table:
-  - Recent Attendance History (Date, Class, Points, Teacher) - last 20 records - ✅ DONE (missing Teacher column)
-
-**Tab 2: Submit Feedback (`Submit Feedback`)**
-- Instructions: Feedback must be submitted within 7 days of attending - ✅ DONE
-- Classes Awaiting Feedback list with rating and comment - ✅ DONE
-- Submitted Feedback list - ✅ DONE
-
-**Status: MOSTLY COMPLETE** (~90%)
-
----
-
-### 3. Teacher Dashboard (`/teacher`)
-
-**Login:** Redirects to login page - ✅ DONE (uses auth hooks)
-
-**Required Header:**
-- Teacher name - ✅ DONE
-- Logout button in sidebar - ✅ DONE
-
-**Tab 1: Confirm Attendance (`Confirm Attendance`)**
-- Controls:
-  - Date picker (default: today) - ✅ DONE
-  - Class dropdown selector - ✅ DONE
-  - Auto-refresh checkbox (5 seconds) - ✅ DONE
-  - Manual "Refresh Now" button - ✅ DONE
-- Metrics:
-  - Total Students - ✅ DONE
-  - Pending - ✅ DONE
-  - Confirmed - ✅ DONE
-- Student List:
-  - Checkbox (for pending only) - ✅ DONE
-  - Student photo + name - ✅ DONE
-  - Check-in time - ✅ DONE
-  - Status (Pending/Confirmed) - ✅ DONE
-  - Action buttons: "Confirm", "Remove" - ✅ DONE
-- Bulk Actions:
-  - "Confirm All Selected" button - ✅ DONE
-  - "Remove All Selected" button - ✅ DONE (new)
-- Bottom: "CONFIRM ALL PENDING" button - ✅ DONE
-- Add Student Manually (Expander):
-  - Student dropdown - ✅ DONE
-  - "Add & Confirm" button - ✅ DONE
-
-**Tab 2: Class Roster (`Class Roster`)**
-- Controls:
-  - Date picker - ✅ DONE
-  - Class dropdown - ✅ DONE
-  - Teacher dropdown (pre-selects logged-in teacher) - ✅ DONE (new)
-  - "Assign Teacher" button - ✅ DONE (new)
-- Student Roster Table:
-  - Name, Rank, Check-in Time - ✅ DONE
-  - Total Attendees count - ✅ DONE
-
-**Tab 3: Feedback (`Feedback`)**
-- Filters (Expander):
-  - Date Range picker - ✅ DONE
-  - Classes multiselect - ✅ DONE (new)
-  - Rating dropdown (All/Positive/Negative) - ✅ DONE
-- Metrics:
-  - Total Feedback - ✅ DONE
-  - Positive count - ✅ DONE
-  - Negative count - ✅ DONE
-- Feedback Table:
-  - Date, Class, Lesson, Rating, Comment - ✅ DONE (new columns)
-  - Anonymous (no student names) - ✅ DONE
-
-**Status: MOSTLY COMPLETE** (~95%)
-
----
-
-### 4. Admin/Settings Page (`/admin`)
-
-**Login:** API-based email/password (admin@example.com/admin123) - ✅ DONE
-
-**Tab 1: User Admin (`User Admin`)**
-- Search: Filter by name, rank, or email - ✅ DONE
-- Stats: Total Active Members metric - ✅ DONE
-- Table: Members list (first name, last name, rank, email, created date) - ✅ DONE
-- Edit Member Form - ✅ DONE
-- Role Management Section - ✅ DONE
-- Reset Password Section - ✅ DONE (new)
-- Photo Management Section - ✅ DONE (new - upload/camera/delete)
-
-**Tab 2: Class Schedule (`Class Schedule`)**
-- Add New Class Form - ✅ DONE
-- Table: Active schedule - ✅ DONE
-
-**Tab 3: Gyms & Types (`Gyms & Types`)**
-- Gym Locations: Add form and table - ✅ DONE
-- Class Types: Add form and table - ✅ DONE
-
-**Tab 4: Terms (`Terms`)**
-- Add Term Form - ✅ DONE
-- Table: Terms list - ✅ DONE
-
-**Tab 5: Targets (`Targets`)**
-- Add Target Form - ✅ DONE
-- Table: Targets list - ✅ DONE
-
-**Tab 6: Lessons (`Lessons`)**
-- Subtab 1: Curricula - ✅ DONE
-- Subtab 2: Lesson Library - ✅ DONE
-- Subtab 3: Assign to Dates - ✅ DONE (new)
-- Subtab 4: Teacher Assignments - ✅ DONE (new)
-
-**Tab 7: Student Passwords (`Student Password Management`)** - ✅ DONE (new)
-
-**Tab 8: Performance Analytics (`Performance Analytics`)** - ✅ DONE (new - real implementation)
-
-**Tab 9: Feedback Analytics (`Comprehensive Feedback Analytics`)** - ✅ DONE (new - real implementation)
-
-**Tab 10: Kiosk Management (`Kiosk PIN Management`)** - ✅ DONE (new)
-
-**Tab 11: Database (`Database Management`)**
-- Statistics - ✅ DONE
-- Export (Seed/Backup) - ✅ DONE (new)
-- Restore (Upload) - ✅ DONE (new)
-- Reset Database - ✅ DONE (new)
-
-**Status: MOSTLY COMPLETE** (~95%)
-
----
-
-## BACKEND ASSESSMENT
-
-**API Endpoints:** All major endpoints implemented - ✅ DONE
-**Database Models:** All tables created - ✅ DONE
-**Authentication:** JWT-based auth working - ✅ DONE
-**Database:** Seeded with realistic data - ✅ DONE (10 users, 208 attendance records)
+### Sidebar Navigation
+- ✅ Check In link visible to all authenticated users (Student, Teacher, Tablet, Admin)
+- ✅ Role-appropriate dashboard links shown per user role
 
 ---
 
@@ -265,7 +56,7 @@ Martial Arts Attendance Tracking System - A full-stack application for managing 
 - Teacher: mike@example.com / password123
 - Teacher: sarah@example.com / password123
 - Admin: admin@example.com / admin123
-- Tablet: tablet@example.com / tablet123 (redirects to /check-in)
+- Tablet: tablet@example.com / tablet123 (full check-in access)
 
 ### Can Now Test:
 - User creation - ✅ Ready
@@ -338,4 +129,4 @@ uv run uvicorn app.main:app --reload
 
 ---
 
-*Last Updated: March 25, 2026*
+*Last Updated: March 31, 2026*

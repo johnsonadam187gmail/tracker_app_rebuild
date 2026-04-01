@@ -39,7 +39,8 @@
 1. **Student Check-In System** - Students search for themselves and check into classes
 2. **Mat-Side Workflow** - Students check in (pending), teachers confirm (confirmed)
 3. **User Management** - Create/edit members with profile photos, ranks, grading dates
-4. **Class Scheduling** - Recurring classes with day/time/points/gym/class type
+4. **ID Photo Display** - All name displays show user photo (placeholder or uploaded)
+5. **Class Scheduling** - Recurring classes with day/time/points/gym/class type
 5. **Role-Based Access** - Student, Teacher, Admin roles with historical tracking (SCD Type 2)
 6. **Password Authentication** - Students can log in to view personal analytics
 7. **Teacher Dashboard** - Confirm attendance, assign teachers to classes, view feedback
@@ -78,6 +79,12 @@
     - Confirmed: "✅ Confirmed" (disabled)
   - "✅ Complete - Done" button
   - "🔄 Start Over - New Student" button (with confirmation)
+
+**Role-Based Access Control:**
+- **Tablet role**: Full access - search any user, add new members
+- **Student role**: Pre-selected own profile, no search capability
+- **Teacher role**: Pre-selected own profile, no search capability, can access via sidebar but restricted to own check-in
+- **Admin role**: Full access - search any user, add new members
 
 ---
 
@@ -1279,4 +1286,4 @@ The `/users/search` endpoint now:
 
 ---
 
-**Last Updated:** March 21, 2026
+**Last Updated:** March 31, 2026

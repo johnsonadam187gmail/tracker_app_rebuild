@@ -27,7 +27,7 @@ import {
   newsApi,
 } from '@/lib/api';
 import { formatDate, DAYS_OF_WEEK } from '@/lib/utils';
-import { Camera, LogOut, Newspaper } from 'lucide-react';
+import { Camera, LogOut, Newspaper, Plus, X } from 'lucide-react';
 import type { User, ClassSchedule, Role, Term, TermTarget, Curriculum, Lesson, GymLocation, ClassType, Rank, News } from '@/types';
 
 export default function AdminPage() {
@@ -109,6 +109,24 @@ export default function AdminPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isCreatingUser, setIsCreatingUser] = useState(false);
+  const [newUserForm, setNewUserForm] = useState({
+    first_name: '',
+    last_name: '',
+    email: '',
+    password: '',
+    confirm_password: '',
+    rank: 'White' as Rank,
+    nicknames: '',
+    comments: '',
+  });
+  const [newUserPhotoMethod, setNewUserPhotoMethod] = useState<'upload' | 'camera'>('upload');
+  const [newUserCameraStream, setNewUserCameraStream] = useState<MediaStream | null>(null);
+  const newUserVideoRef = useRef<HTMLVideoElement>(null);
+  const newUserCanvasRef = useRef<HTMLCanvasElement>(null);
+  const newUserFileInputRef = useRef<HTMLInputElement>(null);
+  const [newUserPhoto, setNewUserPhoto] = useState<File | null>(null);
+  const [newUserPhotoPreview, setNewUserPhotoPreview] = useState<string | null>(null);
 
   useEffect(() => {
     if (isAdmin) {
@@ -452,6 +470,102 @@ export default function AdminPage() {
     }
   };
 
+  const startNewUserCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+      setNewUserCameraStream(stream);
+      if (newUserVideoRef.current) {
+        newUserVideoRef.current.srcObject = stream;
+      }
+    } catch (error) {
+      console.error('Camera access error:', error);
+      alert('Could not access camera');
+    }
+  };
+
+  const stopNewUserCamera = () => {
+    if (newUserCameraStream) {
+      newUserCameraStream.getTracks().forEach(track => track.stop());
+      setNewUserCameraStream(null);
+    }
+  };
+
+  const captureNewUserPhoto = () => {
+    if (!newUserVideoRef.current || !newUserCanvasRef.current) return;
+    const video = newUserVideoRef.current;
+    const canvas = newUserCanvasRef.current;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.drawImage(video, 0, 0);
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const file = new File([blob], 'photo.jpg', { type: 'image/jpeg' });
+          setNewUserPhoto(file);
+          setNewUserPhotoPreview(URL.createObjectURL(blob));
+        }
+      }, 'image/jpeg', 0.8);
+    }
+    stopNewUserCamera();
+  };
+
+  const handleNewUserFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setNewUserPhoto(file);
+      setNewUserPhotoPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const resetNewUserForm = () => {
+    setIsCreatingUser(false);
+    setNewUserForm({
+      first_name: '',
+      last_name: '',
+      email: '',
+      password: '',
+      confirm_password: '',
+      rank: 'White',
+      nicknames: '',
+      comments: '',
+    });
+    setNewUserPhoto(null);
+    setNewUserPhotoPreview(null);
+    stopNewUserCamera();
+  };
+
+  const handleCreateNewUser = async () => {
+    if (newUserForm.password !== newUserForm.confirm_password) {
+      alert('Passwords do not match');
+      return;
+    }
+    setIsProcessing(true);
+    try {
+      const user = await usersApi.create({
+        first_name: newUserForm.first_name,
+        last_name: newUserForm.last_name,
+        email: newUserForm.email,
+        password_hash: newUserForm.password,
+        rank: newUserForm.rank,
+        nicknames: newUserForm.nicknames || undefined,
+        comments: newUserForm.comments || undefined,
+      });
+
+      if (newUserPhoto) {
+        await usersApi.uploadPhoto(user.user_uuid, newUserPhoto);
+      }
+
+      loadAllData();
+      resetNewUserForm();
+    } catch (error) {
+      console.error('Error creating user:', error);
+      alert('Failed to create user');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const handleCreateClassInstance = async () => {
     if (!classInstanceForm.class_id || !classInstanceForm.date) return;
     setIsProcessing(true);
@@ -651,12 +765,17 @@ export default function AdminPage() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle>Members</CardTitle>
-                  <Input
-                    placeholder="Search by name, rank, or email..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-64"
-                  />
+                  <div className="flex items-center gap-2">
+                    <Input
+                      placeholder="Search by name, rank, or email..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-64"
+                    />
+                    <Button size="sm" onClick={() => setIsCreatingUser(true)}>
+                      <Plus className="w-4 h-4 mr-1" /> Add Member
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
@@ -860,6 +979,169 @@ export default function AdminPage() {
               </Card>
             )}
           </div>
+        </div>
+      )}
+
+      {isCreatingUser && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Add New Member</CardTitle>
+                <Button variant="ghost" size="sm" onClick={resetNewUserForm}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-col items-center mb-4">
+                {newUserPhotoPreview ? (
+                  <div className="relative">
+                    <img
+                      src={newUserPhotoPreview}
+                      alt="Preview"
+                      className="w-32 h-32 rounded-full object-cover ring-4 ring-slate-100 dark:ring-slate-700"
+                    />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="absolute -top-2 -right-2"
+                      onClick={() => {
+                        setNewUserPhoto(null);
+                        setNewUserPhotoPreview(null);
+                      }}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="w-32 h-32 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
+                    <Camera className="w-8 h-8 text-slate-400" />
+                  </div>
+                )}
+                <div className="flex gap-2 mt-3">
+                  <Button
+                    variant={newUserPhotoMethod === 'upload' ? 'primary' : 'outline'}
+                    size="sm"
+                    onClick={() => {
+                      setNewUserPhotoMethod('upload');
+                      stopNewUserCamera();
+                    }}
+                  >
+                    Upload
+                  </Button>
+                  <Button
+                    variant={newUserPhotoMethod === 'camera' ? 'primary' : 'outline'}
+                    size="sm"
+                    onClick={() => {
+                      setNewUserPhotoMethod('camera');
+                      startNewUserCamera();
+                    }}
+                  >
+                    Camera
+                  </Button>
+                </div>
+                {newUserPhotoMethod === 'upload' ? (
+                  <input
+                    type="file"
+                    accept="image/*"
+                    ref={newUserFileInputRef}
+                    onChange={handleNewUserFileUpload}
+                    className="hidden"
+                  />
+                ) : newUserCameraStream ? (
+                  <div className="space-y-2 mt-2">
+                    <video ref={newUserVideoRef} autoPlay playsInline muted className="w-full max-w-xs rounded-lg" />
+                    <div className="flex gap-2 justify-center">
+                      <Button size="sm" onClick={captureNewUserPhoto}>Capture</Button>
+                      <Button variant="outline" size="sm" onClick={stopNewUserCamera}>Cancel</Button>
+                    </div>
+                  </div>
+                ) : null}
+                {newUserPhotoMethod === 'upload' && !newUserPhotoPreview && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-2"
+                    onClick={() => newUserFileInputRef.current?.click()}
+                  >
+                    Choose Photo
+                  </Button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <Input
+                  label="First Name"
+                  value={newUserForm.first_name}
+                  onChange={(e) => setNewUserForm({ ...newUserForm, first_name: e.target.value })}
+                  required
+                />
+                <Input
+                  label="Last Name"
+                  value={newUserForm.last_name}
+                  onChange={(e) => setNewUserForm({ ...newUserForm, last_name: e.target.value })}
+                  required
+                />
+              </div>
+              <Input
+                label="Email"
+                type="email"
+                value={newUserForm.email}
+                onChange={(e) => setNewUserForm({ ...newUserForm, email: e.target.value })}
+                required
+              />
+              <div className="grid grid-cols-2 gap-4">
+                <Input
+                  label="Password"
+                  type="password"
+                  value={newUserForm.password}
+                  onChange={(e) => setNewUserForm({ ...newUserForm, password: e.target.value })}
+                  required
+                />
+                <Input
+                  label="Confirm Password"
+                  type="password"
+                  value={newUserForm.confirm_password}
+                  onChange={(e) => setNewUserForm({ ...newUserForm, confirm_password: e.target.value })}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Rank</label>
+                <select
+                  className="flex h-11 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:text-white"
+                  value={newUserForm.rank}
+                  onChange={(e) => setNewUserForm({ ...newUserForm, rank: e.target.value as Rank })}
+                >
+                  <option value="White">White</option>
+                  <option value="Blue">Blue</option>
+                  <option value="Purple">Purple</option>
+                  <option value="Brown">Brown</option>
+                  <option value="Black">Black</option>
+                </select>
+              </div>
+              <Input
+                label="Nicknames (optional)"
+                value={newUserForm.nicknames}
+                onChange={(e) => setNewUserForm({ ...newUserForm, nicknames: e.target.value })}
+              />
+              <Input
+                label="Comments (optional)"
+                value={newUserForm.comments}
+                onChange={(e) => setNewUserForm({ ...newUserForm, comments: e.target.value })}
+              />
+              <Button
+                className="w-full"
+                onClick={handleCreateNewUser}
+                disabled={isProcessing || !newUserForm.first_name || !newUserForm.last_name || !newUserForm.email || !newUserForm.password}
+                isLoading={isProcessing}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Create Member
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       )}
 
@@ -1503,6 +1785,20 @@ export default function AdminPage() {
                     </option>
                   ))}
                 </select>
+                {selectedStudentAnalytics && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <Avatar
+                      src={selectedStudentAnalytics.profile_image_url}
+                      firstName={selectedStudentAnalytics.first_name}
+                      lastName={selectedStudentAnalytics.last_name}
+                      size="sm"
+                    />
+                    <span className="text-sm text-slate-600 dark:text-slate-400">
+                      {selectedStudentAnalytics.first_name} {selectedStudentAnalytics.last_name}
+                    </span>
+                  </div>
+                )}
+                </select>
               </div>
 
               {selectedStudentAnalytics && performanceStats ? (
@@ -1662,7 +1958,17 @@ export default function AdminPage() {
                 <tbody>
                   {users.map((u) => (
                     <tr key={u.user_uuid} className="border-t dark:border-slate-700">
-                      <td className="p-3 text-slate-900 dark:text-white">{u.first_name} {u.last_name}</td>
+                      <td className="p-3">
+                        <div className="flex items-center gap-2">
+                          <Avatar
+                            src={u.profile_image_url}
+                            firstName={u.first_name}
+                            lastName={u.last_name}
+                            size="sm"
+                          />
+                          <span className="text-slate-900 dark:text-white">{u.first_name} {u.last_name}</span>
+                        </div>
+                      </td>
                       <td className="p-3 text-sm text-slate-500 dark:text-slate-400">{u.email}</td>
                       <td className="p-3">
                         {u.password_hash ? (
@@ -1917,6 +2223,7 @@ export default function AdminPage() {
       )}
 
       <canvas ref={canvasRef} className="hidden" />
+      <canvas ref={newUserCanvasRef} className="hidden" />
       </div>
     </>
   );

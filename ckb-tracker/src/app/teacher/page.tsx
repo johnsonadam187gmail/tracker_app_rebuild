@@ -503,7 +503,20 @@ export default function TeacherPage() {
                     {t.first_name} {t.last_name} ({t.rank})
                   </option>
                 ))}
-              </select>
+                </select>
+              {selectedTeacher && (
+                <div className="flex items-center gap-2">
+                  <Avatar
+                    src={teachers.find(t => t.user_uuid === selectedTeacher)?.profile_image_url}
+                    firstName={teachers.find(t => t.user_uuid === selectedTeacher)?.first_name}
+                    lastName={teachers.find(t => t.user_uuid === selectedTeacher)?.last_name}
+                    size="sm"
+                  />
+                  <span className="text-sm text-slate-600 dark:text-slate-400">
+                    {teachers.find(t => t.user_uuid === selectedTeacher)?.first_name} {teachers.find(t => t.user_uuid === selectedTeacher)?.last_name}
+                  </span>
+                </div>
+              )}
               <Button
                 onClick={() => {
                   if (selectedTeacher) {
@@ -528,8 +541,18 @@ export default function TeacherPage() {
                 <tbody>
                   {attendance.map((att) => (
                     <tr key={att.id} className="border-t dark:border-slate-700">
-                      <td className="p-3 text-slate-900 dark:text-white">
-                        {att.user?.first_name} {att.user?.last_name}
+                      <td className="p-3">
+                        <div className="flex items-center gap-2">
+                          <Avatar
+                            src={att.user?.profile_image_url}
+                            firstName={att.user?.first_name}
+                            lastName={att.user?.last_name}
+                            size="sm"
+                          />
+                          <span className="text-slate-900 dark:text-white">
+                            {att.user?.first_name} {att.user?.last_name}
+                          </span>
+                        </div>
                       </td>
                       <td className="p-3 text-slate-700 dark:text-slate-300">{att.user?.rank || '-'}</td>
                       <td className="p-3 text-slate-700 dark:text-slate-300">
