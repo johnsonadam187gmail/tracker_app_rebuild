@@ -399,6 +399,8 @@ export default function TeacherPage() {
                       src={att.user?.profile_image_url}
                       firstName={att.user?.first_name}
                       lastName={att.user?.last_name}
+                      offsetX={att.user?.image_offset_x}
+                      offsetY={att.user?.image_offset_y}
                     />
                     <div>
                       <p className="font-medium text-slate-900 dark:text-white">
@@ -510,6 +512,8 @@ export default function TeacherPage() {
                     src={teachers.find(t => t.user_uuid === selectedTeacher)?.profile_image_url}
                     firstName={teachers.find(t => t.user_uuid === selectedTeacher)?.first_name}
                     lastName={teachers.find(t => t.user_uuid === selectedTeacher)?.last_name}
+                    offsetX={teachers.find(t => t.user_uuid === selectedTeacher)?.image_offset_x}
+                    offsetY={teachers.find(t => t.user_uuid === selectedTeacher)?.image_offset_y}
                     size="sm"
                   />
                   <span className="text-sm text-slate-600 dark:text-slate-400">
@@ -547,6 +551,8 @@ export default function TeacherPage() {
                             src={att.user?.profile_image_url}
                             firstName={att.user?.first_name}
                             lastName={att.user?.last_name}
+                            offsetX={att.user?.image_offset_x}
+                            offsetY={att.user?.image_offset_y}
                             size="sm"
                           />
                           <span className="text-slate-900 dark:text-white">

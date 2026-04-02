@@ -1,11 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from app.database import SessionLocal
 from app import models, schemas
 from passlib.context import CryptContext
 from datetime import datetime, date
-from typing import List
+from typing import List, Optional
 import uuid
+import os
+import shutil
 
 router = APIRouter()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -122,7 +124,13 @@ def update_user(
 
 
 @router.post("/{user_uuid}/photo")
-def upload_photo(user_uuid: str, profile_image_url: str, db: Session = Depends(get_db)):
+async def upload_photo(
+    user_uuid: str,
+    file: UploadFile = File(...),
+    offset_x: Optional[float] = Form(0.0),
+    offset_y: Optional[float] = Form(0.0),
+    db: Session = Depends(get_db),
+):
     user = (
         db.query(models.User)
         .filter(models.User.user_uuid == user_uuid, models.User.is_current == True)
@@ -130,9 +138,46 @@ def upload_photo(user_uuid: str, profile_image_url: str, db: Session = Depends(g
     )
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    user.profile_image_url = profile_image_url
+
+    # Validate file type
+    if file.content_type and not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="File must be an image")
+
+    # Create uploads directory
+    uploads_dir = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "uploads", "photos"
+    )
+    os.makedirs(uploads_dir, exist_ok=True)
+
+    # Generate unique filename
+    file_ext = os.path.splitext(file.filename)[1] if file.filename else ".jpg"
+    filename = f"{user_uuid}{file_ext}"
+    file_path = os.path.join(uploads_dir, filename)
+
+    # Delete old photo if exists
+    old_url = user.profile_image_url
+    if old_url:
+        old_filename = os.path.basename(old_url)
+        old_path = os.path.join(uploads_dir, old_filename)
+        if os.path.exists(old_path):
+            os.remove(old_path)
+
+    # Save new file
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    # Update user profile_image_url and offsets
+    user.profile_image_url = f"/uploads/photos/{filename}"
+    user.image_offset_x = offset_x
+    user.image_offset_y = offset_y
     db.commit()
-    return {"message": "Photo updated"}
+
+    return {
+        "message": "Photo updated",
+        "profile_image_url": user.profile_image_url,
+        "image_offset_x": user.image_offset_x,
+        "image_offset_y": user.image_offset_y,
+    }
 
 
 @router.delete("/{user_uuid}/photo")
@@ -144,6 +189,52 @@ def delete_photo(user_uuid: str, db: Session = Depends(get_db)):
     )
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+
+    # Delete file if exists
+    if user.profile_image_url:
+        uploads_dir = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+            "uploads",
+            "photos",
+        )
+        filename = os.path.basename(user.profile_image_url)
+        file_path = os.path.join(uploads_dir, filename)
+        if os.path.exists(file_path):
+            os.remove(file_path)
+
     user.profile_image_url = None
+    user.image_offset_x = 0.0
+    user.image_offset_y = 0.0
     db.commit()
     return {"message": "Photo deleted"}
+
+
+@router.put("/{user_uuid}/photo-position")
+def update_photo_position(
+    user_uuid: str,
+    offset_x: float = 0.0,
+    offset_y: float = 0.0,
+    db: Session = Depends(get_db),
+):
+    """Update just the photo position offsets without uploading a new photo."""
+    user = (
+        db.query(models.User)
+        .filter(models.User.user_uuid == user_uuid, models.User.is_current == True)
+        .first()
+    )
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if not user.profile_image_url:
+        raise HTTPException(status_code=400, detail="No profile photo to adjust")
+
+    # Clamp values to -1 to 1 range
+    user.image_offset_x = max(-1.0, min(1.0, offset_x))
+    user.image_offset_y = max(-1.0, min(1.0, offset_y))
+    db.commit()
+
+    return {
+        "message": "Photo position updated",
+        "image_offset_x": user.image_offset_x,
+        "image_offset_y": user.image_offset_y,
+    }

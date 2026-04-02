@@ -15,6 +15,8 @@ export interface User {
   comments?: string;
   nicknames?: string;
   profile_image_url?: string;
+  image_offset_x?: number;
+  image_offset_y?: number;
   is_current: boolean;
   effective_date: string;
   end_date?: string;

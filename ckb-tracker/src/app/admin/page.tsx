@@ -108,6 +108,9 @@ export default function AdminPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [isCameraInitializing, setIsCameraInitializing] = useState(false);
+  const [positionOffset, setPositionOffset] = useState({ x: 0, y: 0 });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isCreatingUser, setIsCreatingUser] = useState(false);
   const [newUserForm, setNewUserForm] = useState({
@@ -169,12 +172,18 @@ export default function AdminPage() {
   };
 
   useEffect(() => {
+    if (videoRef.current && cameraStream) {
+      videoRef.current.srcObject = cameraStream;
+    }
+  }, [cameraStream]);
+
+  useEffect(() => {
     return () => {
       if (cameraStream) {
         cameraStream.getTracks().forEach(track => track.stop());
       }
     };
-  }, [cameraStream]);
+  }, []);
 
   const loadAllData = async () => {
     try {
@@ -215,6 +224,10 @@ export default function AdminPage() {
 
   const handleSelectUser = async (u: User) => {
     setSelectedUser(u);
+    setPositionOffset({ 
+      x: u.image_offset_x ?? 0, 
+      y: u.image_offset_y ?? 0 
+    });
     setUserForm({
       first_name: u.first_name,
       last_name: u.last_name,
@@ -394,15 +407,30 @@ export default function AdminPage() {
   };
 
   const startCamera = async () => {
+    setCameraError(null);
+    setIsCameraInitializing(true);
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } } 
+      });
       setCameraStream(stream);
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Camera access error:', error);
-      alert('Could not access camera');
+      const err = error as { name?: string; message?: string };
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        setCameraError('Camera permission denied. Please allow camera access in your browser settings.');
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        setCameraError('No camera found on this device.');
+      } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+        setCameraError('Camera is in use by another app or browser tab.');
+      } else {
+        setCameraError('Could not access camera. Please check permissions.');
+      }
+    } finally {
+      setIsCameraInitializing(false);
     }
   };
 
@@ -411,6 +439,7 @@ export default function AdminPage() {
       cameraStream.getTracks().forEach(track => track.stop());
       setCameraStream(null);
     }
+    setCameraError(null);
   };
 
   const capturePhoto = async () => {
@@ -788,7 +817,7 @@ export default function AdminPage() {
                       onClick={() => handleSelectUser(u)}
                     >
                       <div className="flex items-center gap-3">
-                        <Avatar src={u.profile_image_url} firstName={u.first_name} lastName={u.last_name} />
+                        <Avatar src={u.profile_image_url} firstName={u.first_name} lastName={u.last_name} offsetX={u.image_offset_x} offsetY={u.image_offset_y} />
                         <div>
                           <p className="font-medium text-slate-900 dark:text-white">{u.first_name} {u.last_name}</p>
                           <p className="text-sm text-slate-500 dark:text-slate-400">{u.email}</p>
@@ -814,6 +843,8 @@ export default function AdminPage() {
                       src={selectedUser.profile_image_url}
                       firstName={selectedUser.first_name}
                       lastName={selectedUser.last_name}
+                      offsetX={positionOffset.x}
+                      offsetY={positionOffset.y}
                       size="xl"
                     />
                     {selectedUser.profile_image_url && (
@@ -960,8 +991,23 @@ export default function AdminPage() {
                           <Button variant="outline" size="sm" onClick={stopCamera}>Cancel</Button>
                         </div>
                       </div>
+                    ) : cameraError ? (
+                      <div className="text-center py-2">
+                        <p className="text-sm text-red-500 dark:text-red-400 mb-2">{cameraError}</p>
+                        <Button variant="outline" size="sm" onClick={startCamera}>
+                          Try Again
+                        </Button>
+                      </div>
+                    ) : isCameraInitializing ? (
+                      <div className="text-center py-2">
+                        <p className="text-sm text-slate-500 dark:text-slate-400">Initializing camera...</p>
+                      </div>
                     ) : (
-                      <p className="text-sm text-slate-500 text-center">Click Camera to start</p>
+                      <div className="text-center py-2">
+                        <Button variant="outline" size="sm" onClick={startCamera}>
+                          Start Camera
+                        </Button>
+                      </div>
                     )}
                     {photoMethod === 'upload' && (
                       <Button
@@ -973,6 +1019,56 @@ export default function AdminPage() {
                       >
                         Choose Photo
                       </Button>
+                    )}
+                    {selectedUser?.profile_image_url && (
+                      <div className="border-t dark:border-slate-700 pt-4 mt-4">
+                        <h5 className="text-sm font-medium mb-2 text-slate-900 dark:text-white">Photo Position</h5>
+                        <div className="space-y-3">
+                          <div>
+                            <label className="text-xs text-slate-500 dark:text-slate-400">Horizontal: {positionOffset.x.toFixed(2)}</label>
+                            <input
+                              type="range"
+                              min="-1"
+                              max="1"
+                              step="0.05"
+                              value={positionOffset.x}
+                              onChange={(e) => setPositionOffset({ ...positionOffset, x: parseFloat(e.target.value) })}
+                              className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs text-slate-500 dark:text-slate-400">Vertical: {positionOffset.y.toFixed(2)}</label>
+                            <input
+                              type="range"
+                              min="-1"
+                              max="1"
+                              step="0.05"
+                              value={positionOffset.y}
+                              onChange={(e) => setPositionOffset({ ...positionOffset, y: parseFloat(e.target.value) })}
+                              className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer"
+                            />
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full"
+                            onClick={async () => {
+                              if (!selectedUser) return;
+                              try {
+                                await usersApi.updatePhotoPosition(selectedUser.user_uuid, positionOffset.x, positionOffset.y);
+                                setSelectedUser({ ...selectedUser, image_offset_x: positionOffset.x, image_offset_y: positionOffset.y });
+                                alert('Photo position updated');
+                              } catch (error) {
+                                console.error('Update position error:', error);
+                                alert('Failed to update photo position');
+                              }
+                            }}
+                            disabled={isProcessing}
+                          >
+                            Save Position
+                          </Button>
+                        </div>
+                      </div>
                     )}
                   </div>
                 </CardContent>
@@ -1785,21 +1881,23 @@ export default function AdminPage() {
                     </option>
                   ))}
                 </select>
-                {selectedStudentAnalytics && (
-                  <div className="flex items-center gap-2 mt-2">
-                    <Avatar
-                      src={selectedStudentAnalytics.profile_image_url}
-                      firstName={selectedStudentAnalytics.first_name}
-                      lastName={selectedStudentAnalytics.last_name}
-                      size="sm"
-                    />
-                    <span className="text-sm text-slate-600 dark:text-slate-400">
-                      {selectedStudentAnalytics.first_name} {selectedStudentAnalytics.last_name}
-                    </span>
-                  </div>
-                )}
-                </select>
               </div>
+
+              {selectedStudentAnalytics && (
+                <div className="flex items-center gap-2 mt-2">
+                  <Avatar
+                    src={selectedStudentAnalytics.profile_image_url}
+                    firstName={selectedStudentAnalytics.first_name}
+                    lastName={selectedStudentAnalytics.last_name}
+                    offsetX={selectedStudentAnalytics.image_offset_x}
+                    offsetY={selectedStudentAnalytics.image_offset_y}
+                    size="sm"
+                  />
+                  <span className="text-sm text-slate-600 dark:text-slate-400">
+                    {selectedStudentAnalytics.first_name} {selectedStudentAnalytics.last_name}
+                  </span>
+                </div>
+              )}
 
               {selectedStudentAnalytics && performanceStats ? (
                 <div className="space-y-6">
@@ -1808,6 +1906,8 @@ export default function AdminPage() {
                       src={selectedStudentAnalytics.profile_image_url}
                       firstName={selectedStudentAnalytics.first_name}
                       lastName={selectedStudentAnalytics.last_name}
+                      offsetX={selectedStudentAnalytics.image_offset_x}
+                      offsetY={selectedStudentAnalytics.image_offset_y}
                       size="lg"
                     />
                     <div>
@@ -1964,6 +2064,8 @@ export default function AdminPage() {
                             src={u.profile_image_url}
                             firstName={u.first_name}
                             lastName={u.last_name}
+                            offsetX={u.image_offset_x}
+                            offsetY={u.image_offset_y}
                             size="sm"
                           />
                           <span className="text-slate-900 dark:text-white">{u.first_name} {u.last_name}</span>

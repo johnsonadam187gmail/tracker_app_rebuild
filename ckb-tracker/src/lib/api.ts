@@ -76,11 +76,20 @@ export const usersApi = {
     const response = await api.get<User[]>(`/users/search?query=${query}`);
     return response.data;
   },
-  uploadPhoto: async (uuid: string, file: File) => {
+  uploadPhoto: async (uuid: string, file: File, offsetX: number = 0, offsetY: number = 0) => {
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('offset_x', offsetX.toString());
+    formData.append('offset_y', offsetY.toString());
     const response = await api.post(`/users/${uuid}/photo`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+  updatePhotoPosition: async (uuid: string, offsetX: number, offsetY: number) => {
+    const response = await api.put(`/users/${uuid}/photo-position`, {
+      offset_x: offsetX,
+      offset_y: offsetY
     });
     return response.data;
   },

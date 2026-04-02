@@ -42,6 +42,12 @@ export default function CheckInPage() {
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [showPhotoUpload, setShowPhotoUpload] = useState(false);
   const [photoMethod, setPhotoMethod] = useState<'upload' | 'camera'>('upload');
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [isCameraInitializing, setIsCameraInitializing] = useState(false);
+  const [showPhotoPositionModal, setShowPhotoPositionModal] = useState(false);
+  const [pendingPhotoFile, setPendingPhotoFile] = useState<File | null>(null);
+  const [pendingPhotoPreview, setPendingPhotoPreview] = useState<string | null>(null);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -109,12 +115,23 @@ export default function CheckInPage() {
   }, [selectedUser, sessionTimeLeft]);
 
   useEffect(() => {
+    if (videoRef.current && cameraStream) {
+      videoRef.current.srcObject = cameraStream;
+    }
     return () => {
       if (cameraStream) {
         cameraStream.getTracks().forEach(track => track.stop());
       }
     };
   }, [cameraStream]);
+
+  useEffect(() => {
+    return () => {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
 
   const handleSearch = useCallback(
     debounce(async (query: string) => {
@@ -243,15 +260,30 @@ export default function CheckInPage() {
   };
 
   const startCamera = async () => {
+    setCameraError(null);
+    setIsCameraInitializing(true);
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } } 
+      });
       setCameraStream(stream);
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Camera access error:', error);
-      alert('Could not access camera. Please check permissions.');
+      const err = error as { name?: string; message?: string };
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        setCameraError('Camera permission denied. Please allow camera access in your browser settings.');
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        setCameraError('No camera found on this device.');
+      } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+        setCameraError('Camera is in use by another app or browser tab.');
+      } else {
+        setCameraError('Could not access camera. Please check permissions.');
+      }
+    } finally {
+      setIsCameraInitializing(false);
     }
   };
 
@@ -260,6 +292,7 @@ export default function CheckInPage() {
       cameraStream.getTracks().forEach(track => track.stop());
       setCameraStream(null);
     }
+    setCameraError(null);
   };
 
   const capturePhoto = async () => {
@@ -292,16 +325,64 @@ export default function CheckInPage() {
 
   const uploadPhoto = async (file: File) => {
     if (!selectedUser) return;
+    const preview = URL.createObjectURL(file);
+    setPendingPhotoFile(file);
+    setPendingPhotoPreview(preview);
+    setDragOffset({ x: 0, y: 0 });
+    setShowPhotoPositionModal(true);
+    stopCamera();
+  };
+
+  const handleConfirmPhotoPosition = async () => {
+    if (!selectedUser || !pendingPhotoFile) return;
     setIsUploadingPhoto(true);
     try {
-      const updatedUser = await usersApi.uploadPhoto(selectedUser.user_uuid, file);
-      setSelectedUser({ ...selectedUser, profile_image_url: updatedUser.profile_image_url });
+      const updatedUser = await usersApi.uploadPhoto(
+        selectedUser.user_uuid, 
+        pendingPhotoFile, 
+        dragOffset.x, 
+        dragOffset.y
+      );
+      setSelectedUser({ 
+        ...selectedUser, 
+        profile_image_url: updatedUser.profile_image_url,
+        image_offset_x: updatedUser.image_offset_x,
+        image_offset_y: updatedUser.image_offset_y
+      });
+      setShowPhotoPositionModal(false);
+      setPendingPhotoFile(null);
+      setPendingPhotoPreview(null);
     } catch (error) {
       console.error('Photo upload error:', error);
       alert('Failed to upload photo');
     } finally {
       setIsUploadingPhoto(false);
     }
+  };
+
+  const handleRetakePhoto = () => {
+    setShowPhotoPositionModal(false);
+    setPendingPhotoFile(null);
+    if (pendingPhotoPreview) {
+      URL.revokeObjectURL(pendingPhotoPreview);
+    }
+    setPendingPhotoPreview(null);
+    setDragOffset({ x: 0, y: 0 });
+  };
+
+  const handlePhotoDrag = (e: React.MouseEvent) => {
+    const container = e.currentTarget as HTMLDivElement;
+    const rect = container.getBoundingClientRect();
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    const offsetX = (mouseX - centerX) / centerX;
+    const offsetY = (mouseY - centerY) / centerY;
+    setDragOffset({
+      x: Math.max(-1, Math.min(1, -offsetX)),
+      y: Math.max(-1, Math.min(1, -offsetY))
+    });
   };
 
   const handleDeletePhoto = async () => {
@@ -441,6 +522,8 @@ export default function CheckInPage() {
                         src={user.profile_image_url}
                         firstName={user.first_name}
                         lastName={user.last_name}
+                        offsetX={user.image_offset_x}
+                        offsetY={user.image_offset_y}
                         size="lg"
                       />
                       <div className="flex-1 min-w-0">
@@ -574,6 +657,8 @@ export default function CheckInPage() {
                       src={selectedUser.profile_image_url}
                       firstName={selectedUser.first_name}
                       lastName={selectedUser.last_name}
+                      offsetX={selectedUser.image_offset_x}
+                      offsetY={selectedUser.image_offset_y}
                       size="xl"
                       className="ring-4 ring-slate-100 dark:ring-slate-800"
                     />
@@ -627,7 +712,10 @@ export default function CheckInPage() {
                       variant={photoMethod === 'camera' ? 'primary' : 'outline'}
                       size="sm"
                       className="flex-1"
-                      onClick={() => { setPhotoMethod('camera'); startCamera(); }}
+                      onClick={() => { 
+                        setPhotoMethod('camera'); 
+                        startCamera(); 
+                      }}
                     >
                       <Camera className="w-4 h-4 mr-1" /> Camera
                     </Button>
@@ -653,8 +741,23 @@ export default function CheckInPage() {
                         </Button>
                       </div>
                     </div>
+                  ) : cameraError ? (
+                    <div className="text-center py-2">
+                      <p className="text-sm text-red-500 dark:text-red-400 mb-2">{cameraError}</p>
+                      <Button variant="outline" size="sm" onClick={startCamera}>
+                        Try Again
+                      </Button>
+                    </div>
+                  ) : isCameraInitializing ? (
+                    <div className="text-center py-2">
+                      <p className="text-sm text-slate-500 dark:text-slate-400">Initializing camera...</p>
+                    </div>
                   ) : (
-                    <p className="text-sm text-slate-500 text-center py-2">Click Camera to start</p>
+                    <div className="text-center py-2">
+                      <Button variant="outline" size="sm" onClick={startCamera}>
+                        Start Camera
+                      </Button>
+                    </div>
                   )}
 
                   <div className="flex gap-2 mt-3 justify-center">
@@ -780,6 +883,67 @@ export default function CheckInPage() {
       )}
 
       <canvas ref={canvasRef} className="hidden" />
+
+      {showPhotoPositionModal && pendingPhotoPreview && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-xl p-6 max-w-md w-full">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">
+              Adjust Photo Position
+            </h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+              Drag the photo to position it within the circle
+            </p>
+            <div 
+              className="relative w-48 h-48 mx-auto rounded-full overflow-hidden cursor-move bg-slate-100 dark:bg-slate-800 border-4 border-slate-200 dark:border-slate-700"
+              onMouseDown={(e) => {
+                const container = e.currentTarget as HTMLDivElement;
+                const handleMouseMove = (moveEvent: MouseEvent) => {
+                  const rect = container.getBoundingClientRect();
+                  const centerX = rect.width / 2;
+                  const centerY = rect.height / 2;
+                  const mouseX = moveEvent.clientX - rect.left;
+                  const mouseY = moveEvent.clientY - rect.top;
+                  const offsetX = (mouseX - centerX) / centerX;
+                  const offsetY = (mouseY - centerY) / centerY;
+                  setDragOffset({
+                    x: Math.max(-1, Math.min(1, -offsetX)),
+                    y: Math.max(-1, Math.min(1, -offsetY))
+                  });
+                };
+                const handleMouseUp = () => {
+                  document.removeEventListener('mousemove', handleMouseMove);
+                  document.removeEventListener('mouseup', handleMouseUp);
+                };
+                document.addEventListener('mousemove', handleMouseMove);
+                document.addEventListener('mouseup', handleMouseUp);
+              }}
+            >
+              <img
+                src={pendingPhotoPreview}
+                alt="Position preview"
+                className="absolute w-[200%] h-[200%] max-w-none"
+                style={{
+                  objectPosition: `${50 - dragOffset.x * 50}% ${50 - dragOffset.y * 50}%`,
+                  left: '0',
+                  top: '0',
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover'
+                }}
+                draggable={false}
+              />
+            </div>
+            <div className="flex gap-3 mt-6">
+              <Button variant="outline" className="flex-1" onClick={handleRetakePhoto}>
+                Retake
+              </Button>
+              <Button className="flex-1" onClick={handleConfirmPhotoPosition} disabled={isUploadingPhoto}>
+                {isUploadingPhoto ? 'Saving...' : 'Confirm'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

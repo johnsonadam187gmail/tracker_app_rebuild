@@ -30,6 +30,8 @@ class User(Base):
     comments = Column(Text)
     nicknames = Column(String)
     profile_image_url = Column(String)
+    image_offset_x = Column(Float, default=0.0)
+    image_offset_y = Column(Float, default=0.0)
     is_current = Column(Boolean, default=True)
     effective_date = Column(DateTime, default=datetime.utcnow)
     end_date = Column(DateTime)

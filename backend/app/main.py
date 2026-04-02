@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from app.database import engine, SessionLocal
 from app import models
 from app.routers import (
@@ -54,6 +55,13 @@ app.include_router(kiosk.router, prefix="/kiosk", tags=["Kiosk"])
 app.include_router(database.router, prefix="/database", tags=["Database"])
 app.include_router(dashboard.router, prefix="/dashboard", tags=["Dashboard"])
 app.include_router(news.router, tags=["News"])
+
+# Serve uploaded photos statically
+import os
+
+uploads_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads")
+os.makedirs(uploads_dir, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
 
 
 @app.get("/")

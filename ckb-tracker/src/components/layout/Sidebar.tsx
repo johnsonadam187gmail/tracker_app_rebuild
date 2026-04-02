@@ -156,6 +156,8 @@ function SidebarContent({
               src={user.profile_image_url}
               firstName={user.first_name}
               lastName={user.last_name}
+              offsetX={user.image_offset_x}
+              offsetY={user.image_offset_y}
               size="sm"
               className="ring-2 ring-slate-600"
             />
