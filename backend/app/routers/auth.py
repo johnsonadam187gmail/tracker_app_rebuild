@@ -1,10 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, Request, Cookie
+from fastapi import APIRouter, Depends, HTTPException, Response, Request, Cookie, status
 from sqlalchemy.orm import Session
 from app.database import SessionLocal
 from app import models, schemas
 from passlib.context import CryptContext
 from datetime import datetime, timedelta, timezone
 from typing import Optional, List
+from app.auth.limiter import limiter
+
 from app.auth.config import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
     REFRESH_TOKEN_EXPIRE_DAYS,
@@ -136,8 +138,12 @@ def clear_auth_cookies(response: Response):
 
 
 @router.post("/login")
+@limiter.limit("5/minute")
 def login(
-    data: schemas.LoginRequest, response: Response, db: Session = Depends(get_db)
+    request: Request,
+    data: schemas.LoginRequest,
+    response: Response,
+    db: Session = Depends(get_db),
 ):
     user = (
         db.query(models.User)
@@ -182,8 +188,12 @@ def login(
 
 
 @router.post("/teacher-login")
+@limiter.limit("5/minute")
 def teacher_login(
-    data: schemas.LoginRequest, response: Response, db: Session = Depends(get_db)
+    request: Request,
+    data: schemas.LoginRequest,
+    response: Response,
+    db: Session = Depends(get_db),
 ):
     user = (
         db.query(models.User)

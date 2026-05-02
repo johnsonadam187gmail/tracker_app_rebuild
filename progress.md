@@ -130,3 +130,102 @@ uv run uvicorn app.main:app --reload
 ---
 
 *Last Updated: March 31, 2026*
+
+---
+
+## IMMEDIATE NEXT WORK (Current Priority)
+
+### Security Hardening - Authentication & Production Readiness ✅ COMPLETE
+**Priority:** HIGH - Completed May 2, 2026
+
+**Completed Work:**
+1. ✅ Created `.env.example` with security configuration template
+2. ✅ Updated `app/auth/config.py` to use environment variables with production validation
+3. ✅ Added security headers middleware (X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, HSTS)
+4. ✅ Added TrustedHostMiddleware for host validation
+5. ✅ Configurable CORS origins via environment variables
+6. ✅ Added rate limiting on auth endpoints (5/minute) via slowapi
+7. ✅ Verified `.env` is in `.gitignore`
+8. ✅ Added request logging middleware for security audit trails
+9. ✅ Backend successfully starts with all security middleware
+
+**Verification:**
+- Backend running on http://127.0.0.1:8000
+- Rate limiting active on `/auth/login` and `/auth/teacher-login`
+- Security headers being set on all responses
+
+**Remaining Optional Work:**
+- Input validation/sanitization for user-facing forms (frontend-side)
+- Production deployment documentation
+- End-to-end testing of all security features
+
+---
+
+## UPCOMING WORK (After Theme Audit)
+
+### Check-In Class Error Investigation & Fix ✅ COMPLETE
+**Status:** Completed - May 2, 2026
+
+**Error Summary:**
+- **Type:** Console AxiosError (400 Bad Request)
+- **Location:** `ckb-tracker/src/lib/api.ts:152` and `ckb-tracker/src/app/check-in/page.tsx:177`
+- **Endpoint:** `POST /attendance/check-in`
+
+**Root Cause Analysis:**
+The 400 error was caused by:
+1. **User already checked in** - Backend explicitly raises `HTTPException(400, "Already checked in")` at `backend/app/routers/attendance.py:89`
+2. ~~Missing validation~~ ✅ Fixed: Backend now uses `schemas.CheckInRequest` Pydantic schema (line 71)
+3. ~~Poor error feedback~~ ✅ Fixed: Frontend now displays error details from response (line 184)
+
+**Completed Fixes:**
+1. ✅ Proper request validation added via `CheckInRequest` schema
+2. ✅ Frontend error handling improved to show user-friendly messages
+3. ✅ Backend logs verified - no recent 400 errors
+
+---
+
+*Last Updated: May 2, 2026*
+
+---
+
+## COMPLETED WORK (May 2, 2026)
+
+### Theme Consistency Audit - Dark Mode / Light Mode ✅ COMPLETE
+
+**Status:** All pages and components now properly support both light and dark modes.
+
+**Work Completed:**
+1. **Login Page** (`/login`) - Fixed hardcoded dark-mode classes
+   - Background gradients now use `dark:` variants
+   - Form inputs now use proper `dark:` classes via Input component
+   - Error messages support both modes
+   - Text colors properly switch between light/dark
+
+2. **Home Page** (`/`) - Fixed hardcoded dark-mode classes
+   - Background gradients now use `dark:` variants
+   - Class schedule cards support both modes
+   - News section properly themed
+   - All text colors now switch correctly
+
+3. **Sidebar Component** - Fixed hardcoded dark-mode classes
+   - Navigation items properly highlight in both modes
+   - User info section supports light/dark
+   - Theme toggle button works correctly
+   - Mobile/desktop sidebar variants fixed
+
+4. **Check-In Page** (`/check-in`) - Fixed hardcoded dark-mode classes
+   - Class schedule grid supports both modes
+   - Attendance status badges properly themed
+   - User info cards support light/dark
+   - All text colors now switch correctly
+
+5. **Portal, Teacher, Admin Pages** - Audited ✅
+   - All pages already properly implemented `dark:` variants
+   - No hardcoded dark-mode classes found
+   - UI components (Card, Input, Button, Avatar) all support theming
+
+**Build Status:** ✅ Build successful (Next.js 16.1.7 with Turbopack)
+
+---
+
+*Last Updated: May 2, 2026*
