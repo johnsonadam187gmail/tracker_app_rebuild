@@ -2,6 +2,7 @@
 .env.local
 .env.production
 .env.*.local
+.secrets/
 
 node_modules/
 __pycache__/
@@ -25,9 +26,31 @@ build/
 Include/
 Lib/
 Scripts/
+.venv/Lib/
+.venv/Scripts/
+.venv/Lib/**
+.venv/Scripts/**
 
 # Databases
 *.db
+*.sqlite
+*.sqlite3
 
 # Windows artifacts
 nul
+
+# Cookies and session data
+cookies.txt
+*.cookies
+session-*.json
+
+# Upload directories
+uploads/
+media/
+
+# Debug and temp files
+debug_*.py
+fix_*.py
+verify_*.py
+temp.json
+*.bat
