@@ -213,6 +213,7 @@ class ClassInstanceUpdate(ClassInstanceBase):
 
 class ClassInstanceResponse(ClassInstanceBase):
     id: int
+    class_schedule: Optional["ClassScheduleResponse"] = None
     created_at: datetime
     updated_at: datetime
 
@@ -225,6 +226,12 @@ class AttendanceBase(BaseModel):
     class_id: int
     class_instance_id: Optional[int] = None
     teacher_uuid: Optional[str] = None
+
+
+class CheckInRequest(BaseModel):
+    user_uuid: str
+    class_id: int
+    class_instance_id: Optional[int] = None
 
 
 class AttendanceCreate(AttendanceBase):
@@ -267,6 +274,8 @@ class FeedbackResponse(FeedbackBase):
     class_instance_id: int
     created_at: datetime
     updated_at: datetime
+    user: Optional["UserResponse"] = None
+    class_instance: Optional["ClassInstanceResponse"] = None
 
     class Config:
         from_attributes = True

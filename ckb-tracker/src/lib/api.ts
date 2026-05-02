@@ -198,6 +198,10 @@ export const feedbackApi = {
     const response = await api.get<FeedbackStats>('/feedback/admin/comprehensive-stats', { params });
     return response.data;
   },
+  getAdminList: async (params?: { start_date?: string; end_date?: string; classes?: string; teachers?: string; rating?: string }) => {
+    const response = await api.get<ClassFeedback[]>('/feedback/admin/list', { params });
+    return response.data;
+  },
 };
 
 export const rolesApi = {

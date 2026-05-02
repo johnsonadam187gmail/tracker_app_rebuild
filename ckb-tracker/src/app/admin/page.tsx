@@ -102,6 +102,8 @@ export default function AdminPage() {
   const [performanceStats, setPerformanceStats] = useState<any>(null);
   const [selectedStudentAnalytics, setSelectedStudentAnalytics] = useState<User | null>(null);
   const [feedbackFilters, setFeedbackFilters] = useState({ startDate: '', endDate: '', classes: '', rating: 'all' });
+  const [feedbackList, setFeedbackList] = useState<any[]>([]);
+  const [isLoadingFeedback, setIsLoadingFeedback] = useState(false);
   const [newsItems, setNewsItems] = useState<News[]>([]);
   const [newsForm, setNewsForm] = useState({ title: '', content: '', is_published: false });
   const [editingNews, setEditingNews] = useState<News | null>(null);
@@ -154,7 +156,7 @@ export default function AdminPage() {
     if (activeTab === 'feedback') {
       loadFeedbackAnalytics();
     }
-  }, [activeTab, feedbackFilters]);
+  }, [activeTab]);
 
   useEffect(() => {
     if (activeTab === 'news') {
@@ -695,6 +697,30 @@ export default function AdminPage() {
       setFeedbackStats(stats);
     } catch (error) {
       console.error('Error loading feedback:', error);
+    }
+  };
+
+  const searchFeedback = async () => {
+    setIsLoadingFeedback(true);
+    try {
+      const [stats, list] = await Promise.all([
+        feedbackApi.getAdminStats({
+          start_date: feedbackFilters.startDate || undefined,
+          end_date: feedbackFilters.endDate || undefined,
+          rating: feedbackFilters.rating === 'all' ? undefined : feedbackFilters.rating,
+        }),
+        feedbackApi.getAdminList({
+          start_date: feedbackFilters.startDate || undefined,
+          end_date: feedbackFilters.endDate || undefined,
+          rating: feedbackFilters.rating === 'all' ? undefined : feedbackFilters.rating,
+        }),
+      ]);
+      setFeedbackStats(stats);
+      setFeedbackList(list);
+    } catch (error) {
+      console.error('Error searching feedback:', error);
+    } finally {
+      setIsLoadingFeedback(false);
     }
   };
 
@@ -1969,37 +1995,40 @@ export default function AdminPage() {
             <CardTitle>Feedback Analytics</CardTitle>
           </CardHeader>
           <CardContent>
-            <details className="mb-4">
-              <summary className="cursor-pointer font-medium mb-2 text-slate-700 dark:text-slate-300">🔽 Filters</summary>
-              <div className="flex gap-4 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg flex-wrap">
-                <Input
-                  type="date"
-                  label="Start Date"
-                  value={feedbackFilters.startDate}
-                  onChange={(e) => setFeedbackFilters({ ...feedbackFilters, startDate: e.target.value })}
-                  className="w-auto"
-                />
-                <Input
-                  type="date"
-                  label="End Date"
-                  value={feedbackFilters.endDate}
-                  onChange={(e) => setFeedbackFilters({ ...feedbackFilters, endDate: e.target.value })}
-                  className="w-auto"
-                />
-                <div>
-                  <label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Rating</label>
-                  <select
-                    className="border dark:border-slate-600 dark:bg-slate-800 dark:text-white rounded-md px-3 py-2"
-                    value={feedbackFilters.rating}
-                    onChange={(e) => setFeedbackFilters({ ...feedbackFilters, rating: e.target.value })}
-                  >
-                    <option value="all">All</option>
-                    <option value="positive">Positive</option>
-                    <option value="negative">Negative</option>
-                  </select>
+              <details className="mb-4">
+                <summary className="cursor-pointer font-medium mb-2 text-slate-700 dark:text-slate-300">🔽 Filters</summary>
+                <div className="flex gap-4 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg flex-wrap items-end">
+                  <Input
+                    type="date"
+                    label="Start Date"
+                    value={feedbackFilters.startDate}
+                    onChange={(e) => setFeedbackFilters({ ...feedbackFilters, startDate: e.target.value })}
+                    className="w-auto"
+                  />
+                  <Input
+                    type="date"
+                    label="End Date"
+                    value={feedbackFilters.endDate}
+                    onChange={(e) => setFeedbackFilters({ ...feedbackFilters, endDate: e.target.value })}
+                    className="w-auto"
+                  />
+                  <div>
+                    <label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Rating</label>
+                    <select
+                      className="border dark:border-slate-600 dark:bg-slate-800 dark:text-white rounded-md px-3 py-2"
+                      value={feedbackFilters.rating}
+                      onChange={(e) => setFeedbackFilters({ ...feedbackFilters, rating: e.target.value })}
+                    >
+                      <option value="all">All</option>
+                      <option value="positive">Positive</option>
+                      <option value="negative">Negative</option>
+                    </select>
+                  </div>
+                  <Button onClick={searchFeedback} disabled={isLoadingFeedback}>
+                    {isLoadingFeedback ? 'Searching...' : 'Search Feedback'}
+                  </Button>
                 </div>
-              </div>
-            </details>
+              </details>
 
             {feedbackStats ? (
               <div className="space-y-4">
@@ -2021,9 +2050,53 @@ export default function AdminPage() {
                     <p className="text-sm text-blue-600 dark:text-blue-400">👍 Count</p>
                   </div>
                 </div>
+
+                {feedbackList.length > 0 && (
+                  <div className="mt-6">
+                    <h4 className="font-medium mb-3 text-slate-900 dark:text-white">Feedback List</h4>
+                    <div className="border dark:border-slate-700 rounded-lg overflow-hidden">
+                      <div className="max-h-96 overflow-y-auto">
+                        <table className="w-full text-sm">
+                          <thead className="bg-slate-100 dark:bg-slate-800 sticky top-0">
+                            <tr>
+                              <th className="text-left p-3">Date</th>
+                              <th className="text-left p-3">User</th>
+                              <th className="text-left p-3">Rating</th>
+                              <th className="text-left p-3">Comment</th>
+                              <th className="text-left p-3">Class</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {feedbackList.map((item) => (
+                              <tr key={item.id} className="border-t dark:border-slate-700">
+                                <td className="p-3 text-slate-600 dark:text-slate-400">
+                                  {item.class_instance?.class_date || 'N/A'}
+                                </td>
+                                <td className="p-3 text-slate-900 dark:text-white">
+                                  {item.user?.first_name} {item.user?.last_name}
+                                </td>
+                                <td className="p-3">
+                                  <span className={item.rating === 'positive' ? 'text-green-600' : 'text-red-600'}>
+                                    {item.rating === 'positive' ? '👍 Positive' : '👎 Negative'}
+                                  </span>
+                                </td>
+                                <td className="p-3 text-slate-600 dark:text-slate-400 max-w-xs truncate">
+                                  {item.comment || '-'}
+                                </td>
+                                <td className="p-3 text-slate-600 dark:text-slate-400">
+                                  {item.class_instance?.class_schedule?.class_name || 'N/A'}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
-              <p className="text-slate-500 dark:text-slate-400">Loading feedback data...</p>
+              <p className="text-slate-500 dark:text-slate-400">Click "Search Feedback" to load data...</p>
             )}
           </CardContent>
         </Card>
