@@ -1867,7 +1867,7 @@ export default function AdminPage() {
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-2">Select Student</label>
                 <select
-                  className="border rounded-md px-3 py-2 w-full max-w-md"
+                  className="border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-md px-3 py-2 w-full max-w-md"
                   onChange={(e) => {
                     const student = users.find(u => u.user_uuid === e.target.value);
                     if (student) loadStudentAnalytics(student);

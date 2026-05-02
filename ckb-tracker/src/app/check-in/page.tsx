@@ -36,6 +36,7 @@ export default function CheckInPage() {
   const [classes, setClasses] = useState<ClassSchedule[]>([]);
   const [todayAttendance, setTodayAttendance] = useState<Attendance[]>([]);
   const [isFormLoading, setIsFormLoading] = useState(false);
+  const [error, setError] = useState('');
   const [sessionTimeLeft, setSessionTimeLeft] = useState(120);
   const [showNewMemberForm, setShowNewMemberForm] = useState(false);
   const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
@@ -173,12 +174,15 @@ export default function CheckInPage() {
   const handleCheckIn = async (classId: number) => {
     if (!selectedUser) return;
     setIsFormLoading(true);
+    setError('');
     try {
       await attendanceApi.checkIn(selectedUser.user_uuid, classId);
       const today = new Date().toISOString().split('T')[0];
       const attendance = await attendanceApi.getByUser(selectedUser.user_uuid);
       setTodayAttendance(attendance.filter(a => a.attendance_date === today));
-    } catch (error) {
+    } catch (error: any) {
+      const message = error?.response?.data?.detail || error?.message || 'Failed to check in';
+      setError(message);
       console.error('Check-in error:', error);
     } finally {
       setIsFormLoading(false);
@@ -437,15 +441,22 @@ export default function CheckInPage() {
             <p className="text-sm text-slate-500 dark:text-slate-400">{isTablet ? 'Tablet Mode' : 'Check-In'}</p>
           </div>
         </div>
-        {isTablet && (
-          <Button variant="outline" size="sm" onClick={handleLogout}>
-            <LogOut className="w-4 h-4 mr-2" />
-            Logout
-          </Button>
-        )}
-      </div>
+      {isTablet && (
+        <Button variant="outline" size="sm" onClick={handleLogout}>
+          <LogOut className="w-4 h-4 mr-2" />
+          Logout
+        </Button>
+      )}
+    </div>
 
-      {showCompleteConfirm && (
+    {error && (
+      <div className="flex items-center gap-2 p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-lg text-red-600 dark:text-red-400">
+        <AlertCircle className="w-5 h-5 flex-shrink-0" />
+        {error}
+      </div>
+    )}
+
+    {showCompleteConfirm && (
         <Card className="border-2 border-emerald-500/50 bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-900/20 dark:to-slate-900">
           <CardContent className="py-8 text-center">
             <div className="w-16 h-16 mx-auto mb-4 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center ring-4 ring-emerald-500/20">
@@ -787,42 +798,42 @@ export default function CheckInPage() {
                   const dayClasses = classes.filter(c => c.day?.toLowerCase() === day.toLowerCase()).sort((a, b) => (a.time || '').localeCompare(b.time || ''));
                   const isTodayDay = day === todayDayName;
                   
-                  return (
-                    <div 
-                      key={day} 
-                      className={`
-                        min-h-[160px] md:min-h-[200px] rounded-lg p-2 md:p-3 border
-                        ${isTodayDay 
-                          ? 'bg-blue-500/10 border-blue-500/50' 
-                          : 'bg-slate-700/30 border-slate-600/30'}
-                      `}
-                    >
-                      <div className={`
-                        text-center font-semibold text-sm mb-2 pb-2 border-b 
-                        ${isTodayDay ? 'text-blue-400 border-blue-500/30' : 'text-slate-400 border-slate-600/30'}
-                      `}>
-                        {day}
-                      </div>
-                      <div className="space-y-2">
-                        {dayClasses.length > 0 ? (
-                          dayClasses.map((cls) => {
-                            const { status, attendance } = getAttendanceStatus(cls.id);
-                            
-                            return (
-                              <div
-                                key={cls.id}
-                                className={cn(
-                                  "p-2 rounded-lg border text-xs",
-                                  status === 'confirmed' 
-                                    ? "bg-emerald-500/20 border-emerald-500/50"
-                                    : status === 'pending'
-                                    ? "bg-amber-500/20 border-amber-500/50"
-                                    : "bg-slate-700/50 border-slate-600/50"
-                                )}
-                              >
-                                <p className="font-medium text-white truncate">{cls.class_name}</p>
-                                <p className="text-slate-400">{cls.time}</p>
-                                <p className="text-blue-400 font-medium">{cls.points} pts</p>
+                   return (
+                     <div 
+                       key={day} 
+                       className={`
+                         min-h-[160px] md:min-h-[200px] rounded-lg p-2 md:p-3 border
+                         ${isTodayDay 
+                           ? 'bg-blue-500/10 border-blue-500/50' 
+                           : 'bg-slate-100 dark:bg-slate-700/30 border-slate-200 dark:border-slate-600/30'}
+                       `}
+                     >
+                       <div className={`
+                         text-center font-semibold text-sm mb-2 pb-2 border-b 
+                         ${isTodayDay ? 'text-blue-400 border-blue-500/30' : 'text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-600/30'}
+                       `}>
+                         {day}
+                       </div>
+                       <div className="space-y-2">
+                         {dayClasses.length > 0 ? (
+                           dayClasses.map((cls) => {
+                             const { status, attendance } = getAttendanceStatus(cls.id);
+                             
+                             return (
+                               <div
+                                 key={cls.id}
+                                 className={cn(
+                                   "p-2 rounded-lg border text-xs",
+                                   status === 'confirmed' 
+                                     ? "bg-emerald-50 dark:bg-emerald-500/20 border-emerald-200 dark:border-emerald-500/50"
+                                     : status === 'pending'
+                                     ? "bg-amber-50 dark:bg-amber-500/20 border-amber-200 dark:border-amber-500/50"
+                                     : "bg-slate-100 dark:bg-slate-700/50 border-slate-200 dark:border-slate-600/50"
+                                 )}
+                               >
+                                 <p className="font-medium text-slate-900 dark:text-white truncate">{cls.class_name}</p>
+                                 <p className="text-slate-500 dark:text-slate-400">{cls.time}</p>
+                                 <p className="text-blue-400 font-medium">{cls.points} pts</p>
                                 <div className="mt-1">
                                   {status === 'not_checked_in' && (
                                     <Button 

@@ -343,7 +343,7 @@ export default function TeacherPage() {
                   className="w-auto"
                 />
                 <select
-                  className="border rounded-md px-3 py-2"
+                  className="border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-md px-3 py-2"
                   value={selectedClass}
                   onChange={(e) => setSelectedClass(Number(e.target.value))}
                 >
@@ -452,7 +452,7 @@ export default function TeacherPage() {
                 <summary className="cursor-pointer font-medium">+ Add Student Manually</summary>
                 <div className="mt-2 p-3 bg-slate-50 rounded-lg">
                   <select
-                    className="w-full border rounded-md p-2"
+                    className="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-md p-2"
                     onChange={(e) => {
                       if (e.target.value) handleAddStudent(e.target.value);
                     }}
@@ -486,7 +486,7 @@ export default function TeacherPage() {
                 className="w-auto"
               />
               <select
-                className="border rounded-md px-3 py-2"
+                className="border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-md px-3 py-2"
                 value={selectedClass}
                 onChange={(e) => setSelectedClass(Number(e.target.value))}
               >
@@ -495,7 +495,7 @@ export default function TeacherPage() {
                 ))}
               </select>
               <select
-                className="border rounded-md px-3 py-2"
+                className="border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-md px-3 py-2"
                 value={selectedTeacher}
                 onChange={(e) => setSelectedTeacher(e.target.value)}
               >
