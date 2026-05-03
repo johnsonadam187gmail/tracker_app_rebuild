@@ -32,6 +32,7 @@ from app.routers import (
     database,
     dashboard,
     news,
+    comments,
 )
 
 app = FastAPI(title="CKB Tracker API", version="1.0.0")
@@ -130,6 +131,7 @@ app.include_router(kiosk.router, prefix="/kiosk", tags=["Kiosk"])
 app.include_router(database.router, prefix="/database", tags=["Database"])
 app.include_router(dashboard.router, prefix="/dashboard", tags=["Dashboard"])
 app.include_router(news.router, tags=["News"])
+app.include_router(comments.router, prefix="/comments", tags=["Comments"])
 
 # Serve uploaded photos statically
 import os

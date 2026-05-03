@@ -9,9 +9,10 @@ import { Badge, RankBadge } from '@/components/ui/Badge';
 import { Avatar } from '@/components/ui/Avatar';
 import { useAuth } from '@/hooks/useAuth';
 import { useChartColors } from '@/hooks/useChartColors';
-import { dashboardApi, feedbackApi, attendanceApi, usersApi, termsApi, termTargetsApi } from '@/lib/api';
+import { dashboardApi, feedbackApi, attendanceApi, usersApi, termsApi, termTargetsApi, commentsApi } from '@/lib/api';
 import { formatDate, getDaysAgo } from '@/lib/utils';
-import type { DashboardStats, AttendanceTrend, ClassFeedback, Attendance, User, Term, TermTarget } from '@/types';
+import type { DashboardStats, AttendanceTrend, ClassFeedback, Attendance, User, Term, TermTarget, Comment } from '@/types';
+import { CommentFeed } from '@/components/comments/CommentFeed';
 import { Bar, Doughnut } from 'react-chartjs-2';
 import { LogOut } from 'lucide-react';
 import {
@@ -31,7 +32,7 @@ export default function PortalPage() {
   const { user, logout, login, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const { colors, chartBaseOptions, isDark } = useChartColors();
-  const [activeTab, setActiveTab] = useState<'analytics' | 'feedback'>('analytics');
+  const [activeTab, setActiveTab] = useState<'analytics' | 'feedback' | 'comments'>('analytics');
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [attendanceTrend, setAttendanceTrend] = useState<AttendanceTrend[]>([]);
   const [recentAttendance, setRecentAttendance] = useState<Attendance[]>([]);
@@ -47,6 +48,14 @@ export default function PortalPage() {
   const [targets, setTargets] = useState<TermTarget[]>([]);
   const [currentTerm, setCurrentTerm] = useState<Term | null>(null);
   const [userTarget, setUserTarget] = useState<TermTarget | null>(null);
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [isLoadingComments, setIsLoadingComments] = useState(false);
+
+  useEffect(() => {
+    if (activeTab === 'comments') {
+      loadComments();
+    }
+  }, [activeTab]);
 
   useEffect(() => {
     if (user) {
@@ -72,6 +81,19 @@ export default function PortalPage() {
       setTeachers(teacherMap);
     } catch (error) {
       console.error('Error loading teachers:', error);
+    }
+  };
+
+  const loadComments = async () => {
+    if (!user) return;
+    setIsLoadingComments(true);
+    try {
+      const data = await commentsApi.getFeed(user.user_uuid, 'student');
+      setComments(data);
+    } catch (error) {
+      console.error('Error loading comments:', error);
+    } finally {
+      setIsLoadingComments(false);
     }
   };
 
@@ -260,6 +282,12 @@ export default function PortalPage() {
             onClick={() => setActiveTab('feedback')}
           >
             💬 Submit Feedback
+          </Button>
+          <Button
+            variant={activeTab === 'comments' ? 'primary' : 'outline'}
+            onClick={() => setActiveTab('comments')}
+          >
+            📝 Comments
           </Button>
         </div>
 
@@ -460,6 +488,33 @@ export default function PortalPage() {
                     ))}
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {activeTab === 'comments' && (
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Comments</CardTitle>
+                <p className="text-sm text-slate-500 dark:text-slate-400">Feedback and conversations from teachers and admins</p>
+              </CardHeader>
+              <CardContent>
+                <CommentFeed
+                  comments={comments}
+                  currentUser={user}
+                  isLoading={isLoadingComments}
+                  onRefresh={loadComments}
+                  onReplySubmit={async (parentId, content) => {
+                    if (!user) return;
+                    await commentsApi.create(
+                      { content, parent_comment_id: parentId },
+                      user.user_uuid
+                    );
+                    loadComments();
+                  }}
+                />
               </CardContent>
             </Card>
           </div>

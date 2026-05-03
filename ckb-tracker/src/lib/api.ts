@@ -16,6 +16,7 @@ import type {
   DashboardStats,
   FeedbackStats,
   News,
+  Comment,
 } from '@/types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
@@ -342,6 +343,37 @@ export const newsApi = {
   },
   delete: async (id: number) => {
     const response = await api.delete(`/news/${id}`);
+    return response.data;
+  },
+};
+
+export const commentsApi = {
+  create: async (data: { content: string; parent_comment_id?: number; target_user_uuid?: string; rating?: string }, authorUuid: string) => {
+    const response = await api.post<Comment>('/comments/', data, {
+      params: { author_uuid: authorUuid },
+    });
+    return response.data;
+  },
+  getFeed: async (userUuid: string, role: string = '') => {
+    const params: { user_uuid: string; role?: string } = { user_uuid: userUuid };
+    if (role) params.role = role;
+    const response = await api.get<Comment[]>('/comments/feed', { params });
+    return response.data;
+  },
+  get: async (commentUuid: string) => {
+    const response = await api.get<Comment>(`/comments/${commentUuid}`);
+    return response.data;
+  },
+  update: async (commentUuid: string, data: { content: string }, authorUuid: string) => {
+    const response = await api.put<Comment>(`/comments/${commentUuid}`, data, {
+      params: { author_uuid: authorUuid },
+    });
+    return response.data;
+  },
+  delete: async (commentUuid: string, authorUuid: string) => {
+    const response = await api.delete(`/comments/${commentUuid}`, {
+      params: { author_uuid: authorUuid },
+    });
     return response.data;
   },
 };

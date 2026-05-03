@@ -181,3 +181,17 @@ export interface News {
   created_at: string;
   updated_at: string;
 }
+
+export interface Comment {
+  id: number;
+  comment_uuid: string;
+  author: User | null;
+  target_user: User | null;
+  content: string;
+  rating: FeedbackRating | null;
+  parent_comment_id: number | null;
+  created_at: string;
+  updated_at: string;
+  replies: Comment[];
+  reply_count: number;
+}

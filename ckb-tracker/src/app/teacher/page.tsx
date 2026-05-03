@@ -7,14 +7,16 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Avatar } from '@/components/ui/Avatar';
 import { useAuth } from '@/hooks/useAuth';
-import { classesApi, attendanceApi, feedbackApi, usersApi } from '@/lib/api';
+import { classesApi, attendanceApi, feedbackApi, usersApi, commentsApi } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { LogOut } from 'lucide-react';
-import type { ClassSchedule, Attendance, User, ClassFeedback } from '@/types';
+import type { ClassSchedule, Attendance, User, ClassFeedback, Comment } from '@/types';
+import { CommentFeed } from '@/components/comments/CommentFeed';
+import { CommentCreateForm } from '@/components/comments/CommentCreateForm';
 
 export default function TeacherPage() {
   const { user, isTeacher, isAdmin, isLoading, logout, login } = useAuth();
-  const [activeTab, setActiveTab] = useState<'attendance' | 'roster' | 'feedback'>('attendance');
+  const [activeTab, setActiveTab] = useState<'attendance' | 'roster' | 'feedback' | 'comments'>('attendance');
   const [classes, setClasses] = useState<ClassSchedule[]>([]);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedClass, setSelectedClass] = useState<number | ''>('');
@@ -32,6 +34,9 @@ export default function TeacherPage() {
   const [isLoaded, setIsLoaded] = useState(true);
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
   const [loginError, setLoginError] = useState('');
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [isLoadingComments, setIsLoadingComments] = useState(false);
+  const [showCreateComment, setShowCreateComment] = useState(false);
 
   useEffect(() => {
     if (isTeacher || isAdmin) {
@@ -90,6 +95,25 @@ export default function TeacherPage() {
       setIsLoaded(true);
     }
   };
+
+  const loadComments = async () => {
+    if (!user) return;
+    setIsLoadingComments(true);
+    try {
+      const data = await commentsApi.getFeed(user.user_uuid, 'teacher');
+      setComments(data);
+    } catch (error) {
+      console.error('Error loading comments:', error);
+    } finally {
+      setIsLoadingComments(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'comments') {
+      loadComments();
+    }
+  }, [activeTab]);
 
   const loadAttendance = async () => {
     if (!selectedClass) return;
@@ -327,6 +351,12 @@ export default function TeacherPage() {
           onClick={() => { setActiveTab('feedback'); loadFeedback(); }}
         >
           💬 Feedback
+        </Button>
+        <Button
+          variant={activeTab === 'comments' ? 'primary' : 'outline'}
+          onClick={() => { setActiveTab('comments'); loadComments(); }}
+        >
+          📝 Comments
         </Button>
       </div>
 
@@ -693,6 +723,55 @@ export default function TeacherPage() {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {activeTab === 'comments' && (
+        <>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Comments</h2>
+            <Button
+              variant={showCreateComment ? 'primary' : 'outline'}
+              onClick={() => setShowCreateComment(!showCreateComment)}
+            >
+              {showCreateComment ? 'Cancel' : '+ New Comment'}
+            </Button>
+          </div>
+
+          {showCreateComment && user && (
+            <CommentCreateForm
+              users={users}
+              currentUser={user}
+              onSubmit={async (targetUserUuid, content, rating) => {
+                if (!user) return;
+                await commentsApi.create(
+                  { content, target_user_uuid: targetUserUuid, rating: rating || undefined },
+                  user.user_uuid
+                );
+                setShowCreateComment(false);
+                loadComments();
+              }}
+            />
+          )}
+
+          <Card>
+            <CardContent className="pt-6">
+              <CommentFeed
+                comments={comments}
+                currentUser={user}
+                isLoading={isLoadingComments}
+                onRefresh={loadComments}
+                onReplySubmit={async (parentId, content) => {
+                  if (!user) return;
+                  await commentsApi.create(
+                    { content, parent_comment_id: parentId },
+                    user.user_uuid
+                  );
+                  loadComments();
+                }}
+              />
+            </CardContent>
+          </Card>
+        </>
       )}
     </div>
     </>

@@ -222,6 +222,35 @@ class ClassFeedback(Base):
     )
     class_instance = relationship("ClassInstance", back_populates="feedback")
 
+    comments_authored = relationship(
+        "Comment", back_populates="author", foreign_keys="Comment.author_uuid"
+    )
+    comments_targeted = relationship(
+        "Comment", back_populates="target_user", foreign_keys="Comment.target_user_uuid"
+    )
+
+
+class Comment(Base):
+    __tablename__ = "comments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    comment_uuid = Column(String, unique=True, index=True)
+    parent_comment_id = Column(Integer, ForeignKey("comments.id"), nullable=True)
+    author_uuid = Column(String, ForeignKey("users.user_uuid"))
+    target_user_uuid = Column(String, ForeignKey("users.user_uuid"), nullable=True)
+    content = Column(Text, nullable=False)
+    rating = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    author = relationship(
+        "User", back_populates="comments_authored", foreign_keys=[author_uuid]
+    )
+    target_user = relationship(
+        "User", back_populates="comments_targeted", foreign_keys=[target_user_uuid]
+    )
+    parent = relationship("Comment", remote_side=[id], backref="replies")
+
 
 class KioskAuth(Base):
     __tablename__ = "kiosk_auth"

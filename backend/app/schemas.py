@@ -320,6 +320,38 @@ class FeedbackStats(BaseModel):
     positivePercent: float
 
 
+class CommentBase(BaseModel):
+    content: str
+    rating: Optional[str] = None
+
+
+class CommentCreate(CommentBase):
+    parent_comment_id: Optional[int] = None
+    target_user_uuid: Optional[str] = None
+
+
+class CommentUpdate(BaseModel):
+    content: str
+
+
+class CommentResponse(CommentBase):
+    id: int
+    comment_uuid: str
+    author: Optional[UserResponse] = None
+    target_user: Optional[UserResponse] = None
+    parent_comment_id: Optional[int] = None
+    created_at: datetime
+    updated_at: datetime
+    replies: List["CommentResponse"] = []
+    reply_count: int = 0
+
+    class Config:
+        from_attributes = True
+
+
+CommentResponse.model_rebuild()
+
+
 class NewsBase(BaseModel):
     title: str
     content: str
