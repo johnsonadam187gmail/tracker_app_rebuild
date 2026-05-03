@@ -14,4 +14,5 @@ from . import (
     kiosk,
     database,
     dashboard,
+    comments,
 )

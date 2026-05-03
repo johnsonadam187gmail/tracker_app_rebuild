@@ -45,6 +45,12 @@ class User(Base):
     feedback = relationship(
         "ClassFeedback", back_populates="user", foreign_keys="ClassFeedback.user_uuid"
     )
+    comments_authored = relationship(
+        "Comment", back_populates="author", foreign_keys="Comment.author_uuid"
+    )
+    comments_targeted = relationship(
+        "Comment", back_populates="target_user", foreign_keys="Comment.target_user_uuid"
+    )
 
 
 class Role(Base):
@@ -221,13 +227,6 @@ class ClassFeedback(Base):
         "Attendance", back_populates="feedback", foreign_keys=[attendance_id]
     )
     class_instance = relationship("ClassInstance", back_populates="feedback")
-
-    comments_authored = relationship(
-        "Comment", back_populates="author", foreign_keys="Comment.author_uuid"
-    )
-    comments_targeted = relationship(
-        "Comment", back_populates="target_user", foreign_keys="Comment.target_user_uuid"
-    )
 
 
 class Comment(Base):
