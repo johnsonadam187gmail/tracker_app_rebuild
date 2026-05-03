@@ -68,10 +68,10 @@ def get_class_attendance(
 
 
 @router.post("/check-in")
-def check_in(data: dict, db: Session = Depends(get_db)):
-    user_uuid = data.get("user_uuid")
-    class_id = data.get("class_id")
-    class_instance_id = data.get("class_instance_id")
+def check_in(data: schemas.CheckInRequest, db: Session = Depends(get_db)):
+    user_uuid = data.user_uuid
+    class_id = data.class_id
+    class_instance_id = data.class_instance_id
 
     today = date.today()
 
@@ -86,7 +86,9 @@ def check_in(data: dict, db: Session = Depends(get_db)):
     )
 
     if existing:
-        raise HTTPException(status_code=400, detail="Already checked in")
+        raise HTTPException(
+            status_code=400, detail="Already checked in for this class today"
+        )
 
     db_attendance = models.Attendance(
         user_uuid=user_uuid,
